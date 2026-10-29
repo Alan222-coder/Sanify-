@@ -1,0 +1,641 @@
+/* css/styles.css - Estilos Hospitalarios Profesionales y Sobrios (EHR / HIS Clínico) */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+    --bg-main: #f1f5f9;
+    --bg-card: #ffffff;
+    --bg-card-alt: #f8fafc;
+    --bg-panel: #e2e8f0;
+    --border-color: #e2e8f0;
+    --border-strong: #cbd5e1;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #64748b;
+    --clinical-teal: #0f766e;
+    --clinical-teal-light: #f0fdfa;
+    --clinical-blue: #0284c7;
+    --clinical-blue-light: #f0f9ff;
+    --clinical-navy: #1e293b;
+    --clinical-emerald: #059669;
+    --clinical-emerald-light: #ecfdf5;
+    --clinical-rose: #dc2626;
+    --clinical-rose-light: #fef2f2;
+    --clinical-amber: #d97706;
+    --clinical-amber-light: #fffbeb;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Helvetica Neue", Arial, sans-serif;
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+    overflow-x: hidden;
+    line-height: 1.5;
+}
+
+.font-mono-numbers {
+    font-variant-numeric: tabular-nums;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif;
+}
+
+/* Fondo hospitalario limpio y relajante (sin rejillas geométricas) */
+.clinical-grid-bg {
+    background-color: #f1f5f9;
+    background-image: none;
+}
+
+/* Monitor de Constantes Vitales - Estilo Telemetría Hospitalaria */
+.vital-lcd {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    position: relative;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+/* Indicadores Sobrios de Prioridad de Triaje Clínico (Borde lateral de cama) */
+.priority-urgent {
+    border-left: 4px solid #dc2626 !important;
+    background: #ffffff !important;
+}
+
+.priority-high {
+    border-left: 4px solid #f59e0b !important;
+    background: #ffffff !important;
+}
+
+.priority-moderate {
+    border-left: 4px solid #eab308 !important;
+    background: #ffffff !important;
+}
+
+.priority-stable {
+    border-left: 4px solid #10b981 !important;
+    background: #ffffff !important;
+}
+
+/* Paciente en Cama Hospitalaria - Tarjeta Limpia y Formal */
+.patient-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.patient-card:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+}
+
+/* Paciente Fallecido / Óbito */
+.card-deceased {
+    background: #f8fafc !important;
+    border-color: #cbd5e1 !important;
+    border-left: 4px solid #94a3b8 !important;
+}
+
+/* Tratamiento Activo en Sala */
+.card-healing {
+    border-left: 4px solid #0f766e !important;
+}
+
+/* Botones Médicos Profesionales */
+.btn-medical {
+    position: relative;
+    transition: all 0.15s ease-in-out;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
+.btn-medical:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px -1px rgba(15, 23, 42, 0.12);
+}
+
+.btn-medical:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+/* Barra de Apagón / Contingencia */
+.blackout-banner {
+    background: linear-gradient(90deg, #1e1b4b 0%, #312e81 100%);
+    color: #e0e7ff;
+}
+
+/* Insignias de Triaje Manchester Clínico */
+.triage-manchester-1 {
+    background-color: #ffe4e6;
+    color: #be123c;
+    border: 1px solid #fecdd3;
+    font-weight: 700;
+}
+
+.triage-manchester-2 {
+    background-color: #ffedd5;
+    color: #c2410c;
+    border: 1px solid #fed7aa;
+    font-weight: 700;
+}
+
+.triage-manchester-3 {
+    background-color: #fef9c3;
+    color: #a16207;
+    border: 1px solid #fef08a;
+    font-weight: 700;
+}
+
+.triage-manchester-4 {
+    background-color: #dcfce7;
+    color: #15803d;
+    border: 1px solid #bbf7d0;
+    font-weight: 600;
+}
+
+.triage-manchester-5 {
+    background-color: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #bae6fd;
+    font-weight: 600;
+}
+
+/* Estados Clínicos */
+.status-pill-hospitalized {
+    background: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #bae6fd;
+}
+
+.status-pill-discharged {
+    background: #dcfce7;
+    color: #15803d;
+    border: 1px solid #bbf7d0;
+}
+
+.status-pill-deceased {
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+}
+
+/* Sistema de Soporte a Decisiones Clínicas (CDSS) & Alerta de Alergia */
+.cdss-alert-box {
+    background: #fff1f2;
+    border: 2px solid #f43f5e;
+    border-radius: 1rem;
+    box-shadow: 0 4px 12px rgba(244, 63, 94, 0.15);
+}
+
+.cdss-safe-box {
+    background: #f0fdf4;
+    border: 1.5px solid #22c55e;
+    border-radius: 1rem;
+}
+
+.treatment-card-option {
+    background: #ffffff;
+    border: 2px solid #e2e8f0;
+    border-radius: 1rem;
+    transition: all 0.2s ease-in-out;
+}
+
+.treatment-card-option:hover {
+    border-color: #0284c7;
+    box-shadow: 0 4px 12px rgba(2, 132, 199, 0.1);
+}
+
+.treatment-card-option.is-recommended {
+    border-color: #059669;
+    background: #f0fdf4;
+}
+
+.treatment-card-option.is-contraindicated {
+    border-color: #e11d48;
+    background: #fff5f5;
+}
+
+/* Panel EHR y Expediente Clínico */
+.ehr-panel {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    box-shadow: 0 20px 45px -10px rgba(15, 23, 42, 0.15);
+}
+
+.ehr-table-header {
+    background: #f8fafc;
+    color: #475569;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.ehr-row {
+    transition: background-color 0.15s ease;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.ehr-row:hover {
+    background-color: #f8fafc;
+}
+
+.ehr-row:nth-child(even) {
+    background-color: #fcfdfe;
+}
+
+/* Documento de Epicrisis / Expediente */
+.epicrisis-sheet {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    box-shadow: 0 15px 35px -5px rgba(15, 23, 42, 0.12);
+    position: relative;
+}
+
+.epicrisis-watermark {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-30deg);
+    font-size: 5rem;
+    font-weight: 900;
+    color: rgba(15, 23, 42, 0.025);
+    pointer-events: none;
+    user-select: none;
+    font-family: 'Cinzel', serif;
+    letter-spacing: 0.3em;
+}
+
+.institutional-seal {
+    font-family: 'Cinzel', serif;
+    letter-spacing: 1.5px;
+}
+
+/* Estilos de Módulo Epidemiológico y Comparador de Patrones */
+.pattern-stat-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 1rem;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+.pattern-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.65rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: #f1f5f9;
+    color: #1e293b;
+    border: 1px solid #e2e8f0;
+}
+
+/* Scrollbars Médicas Sutiles */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* ========================================================================= */
+/* NUEVA INTERFAZ MÉDICA LIMPIA Y NO SATURADA                                */
+/* ========================================================================= */
+
+.card-medical-clean {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 1.25rem;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-medical-clean:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 3px 8px rgba(15, 23, 42, 0.06);
+}
+
+/* Constantes Vitales - Telemetría de Cabecera Estandarizada */
+.vital-metric-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0.35rem 0.3rem;
+    border-radius: 0.375rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+}
+
+.vital-metric-chip .v-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.vital-metric-chip .v-value {
+    font-size: 0.92rem;
+    font-weight: 700;
+    line-height: 1.15;
+    margin-top: 0.1rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.vital-metric-chip .v-unit {
+    font-size: 0.58rem;
+    color: #94a3b8;
+}
+
+/* Distintivos Clínicos de Estado */
+.badge-alive {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    background: #ecfdf5;
+    color: #047857;
+    border: 1px solid #a7f3d0;
+    padding: 0.15rem 0.5rem;
+    border-radius: 0.375rem;
+    font-weight: 600;
+    font-size: 0.7rem;
+}
+
+.badge-deceased-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+    padding: 0.15rem 0.5rem;
+    border-radius: 0.375rem;
+    font-weight: 600;
+    font-size: 0.7rem;
+}
+
+.badge-cured-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    background: #f0fdf4;
+    color: #15803d;
+    border: 1px solid #86efac;
+    padding: 0.15rem 0.5rem;
+    border-radius: 0.375rem;
+    font-weight: 600;
+    font-size: 0.7rem;
+}
+
+.badge-blood-type {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.72rem;
+    padding: 0.15rem 0.45rem;
+    border-radius: 0.375rem;
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+    font-variant-numeric: tabular-nums;
+}
+
+.badge-insurance-tag {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.15rem 0.45rem;
+    border-radius: 0.375rem;
+    background: #f8fafc;
+    color: #334155;
+    border: 1px solid #e2e8f0;
+}
+
+/* ========================================================================= */
+/* MODO OSCURO / DESCANSO VISUAL (GRIS PIZARRA MATE PARA TURNOS DE GUARDIA) */
+/* ========================================================================= */
+
+body.dark-mode {
+    background-color: #0f172a !important;
+    color: #f1f5f9 !important;
+}
+
+body.dark-mode.clinical-grid-bg {
+    background-color: #0f172a !important;
+    background-image: none !important;
+}
+
+body.dark-mode header {
+    background-color: #0f172a !important;
+    border-color: #334155 !important;
+}
+
+body.dark-mode footer {
+    background-color: #0f172a !important;
+    border-color: #334155 !important;
+}
+
+body.dark-mode .card-medical-clean,
+body.dark-mode .patient-card {
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+}
+
+body.dark-mode .card-medical-clean:hover,
+body.dark-mode .patient-card:hover {
+    border-color: #475569 !important;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35) !important;
+}
+
+body.dark-mode .card-deceased {
+    background-color: #182232 !important;
+    border-color: #334155 !important;
+}
+
+body.dark-mode .vital-metric-chip {
+    background-color: #0f172a !important;
+    border-color: #334155 !important;
+}
+
+body.dark-mode .vital-metric-chip .v-label {
+    color: #94a3b8 !important;
+}
+
+body.dark-mode .vital-metric-chip .v-unit {
+    color: #64748b !important;
+}
+
+body.dark-mode .vital-lcd {
+    background-color: #0f172a !important;
+    border-color: #334155 !important;
+}
+
+/* Modales en Modo Oscuro */
+body.dark-mode #scoreboard-modal > div,
+body.dark-mode #prescription-modal > div,
+body.dark-mode #store-modal > div,
+body.dark-mode #dossier-modal > div,
+body.dark-mode #tutorial-modal > div,
+body.dark-mode #epidemiology-modal > div,
+body.dark-mode #patient-details-modal > div,
+body.dark-mode #edit-patient-modal > div,
+body.dark-mode #shift-history-detail-modal > div {
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+    color: #f1f5f9 !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+}
+
+body.dark-mode .ehr-table-header {
+    background-color: #0f172a !important;
+    color: #cbd5e1 !important;
+    border-color: #334155 !important;
+}
+
+body.dark-mode .ehr-row {
+    border-color: #334155 !important;
+}
+
+body.dark-mode .ehr-row:hover {
+    background-color: #273549 !important;
+}
+
+body.dark-mode .ehr-row:nth-child(even) {
+    background-color: #1a2436 !important;
+}
+
+/* Textos e Inputs en Modo Oscuro */
+body.dark-mode .text-slate-900,
+body.dark-mode .text-slate-800 {
+    color: #f8fafc !important;
+}
+
+body.dark-mode .text-slate-700,
+body.dark-mode .text-slate-600 {
+    color: #cbd5e1 !important;
+}
+
+body.dark-mode .text-slate-500,
+body.dark-mode .text-slate-400 {
+    color: #94a3b8 !important;
+}
+
+body.dark-mode .bg-slate-50,
+body.dark-mode .bg-slate-100 {
+    background-color: #0f172a !important;
+    border-color: #334155 !important;
+}
+
+body.dark-mode .bg-white {
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+}
+
+body.dark-mode .border-slate-100,
+body.dark-mode .border-slate-200,
+body.dark-mode .border-slate-300 {
+    border-color: #334155 !important;
+}
+
+body.dark-mode input[type="text"],
+body.dark-mode select,
+body.dark-mode textarea {
+    background-color: #0f172a !important;
+    color: #f8fafc !important;
+    border-color: #475569 !important;
+}
+
+body.dark-mode input[type="text"]:focus,
+body.dark-mode select:focus,
+body.dark-mode textarea:focus {
+    border-color: #38bdf8 !important;
+}
+
+body.dark-mode .treatment-card-option {
+    background-color: #0f172a !important;
+    border-color: #334155 !important;
+}
+
+body.dark-mode .treatment-card-option:hover {
+    border-color: #38bdf8 !important;
+}
+
+body.dark-mode .treatment-card-option.is-recommended {
+    background-color: rgba(5, 150, 105, 0.15) !important;
+    border-color: #059669 !important;
+}
+
+body.dark-mode .treatment-card-option.is-contraindicated {
+    background-color: rgba(225, 29, 72, 0.15) !important;
+    border-color: #e11d48 !important;
+}
+
+body.dark-mode .badge-blood-type {
+    background-color: #172554 !important;
+    color: #60a5fa !important;
+    border-color: #1e40af !important;
+}
+
+body.dark-mode .badge-insurance-tag {
+    background-color: #0f172a !important;
+    color: #cbd5e1 !important;
+    border-color: #334155 !important;
+}
+
+body.dark-mode .badge-alive {
+    background-color: rgba(5, 150, 105, 0.2) !important;
+    color: #34d399 !important;
+    border-color: #059669 !important;
+}
+
+body.dark-mode .badge-deceased-status {
+    background-color: #1e293b !important;
+    color: #94a3b8 !important;
+    border-color: #475569 !important;
+}
+
+body.dark-mode .badge-cured-status {
+    background-color: rgba(16, 185, 129, 0.2) !important;
+    color: #34d399 !important;
+    border-color: #10b981 !important;
+}
+
+body.dark-mode .pattern-stat-card {
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+}
+
+body.dark-mode .pattern-chip {
+    background-color: #0f172a !important;
+    border-color: #334155 !important;
+    color: #cbd5e1 !important;
+}
+
+body.dark-mode .epicrisis-sheet {
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+    color: #f1f5f9 !important;
+}
+
+body.dark-mode ::-webkit-scrollbar-track {
+    background: #0f172a;
+}
+body.dark-mode ::-webkit-scrollbar-thumb {
+    background: #334155;
+}
+body.dark-mode ::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+}
+
