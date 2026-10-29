@@ -1,0 +1,1318 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hospital Central San Rafael - Monitor Clínico y Soporte Asistencial</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 flex flex-col justify-between selection:bg-teal-700 selection:text-white">
+
+    <!-- BANNER DE CONTINGENCIA / CORTE ELÉCTRICO -->
+    <div id="blackout-warning-bar" class="hidden blackout-banner px-4 py-2 text-center text-xs font-bold shadow-md relative z-40">
+        <div class="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-2">
+            <span class="flex items-center space-x-2">
+                <span>Alerta de Suministro: Contingencia en red eléctrica. Bombas de infusión fuera de servicio (<span id="blackout-seconds-left">35</span>s restantes).</span>
+            </span>
+            <button onclick="resolveBlackoutQuick()" class="btn-medical px-3 py-1 bg-amber-400 hover:bg-amber-300 text-slate-950 rounded-md text-xs font-semibold shadow-xs">
+                Arrancar Generador Auxiliar (-$500.00)
+            </button>
+        </div>
+    </div>
+
+    <!-- BARRA SUPERIOR INSTITUCIONAL Y RECURSOS ASISTENCIALES -->
+    <header class="sticky top-0 z-30 bg-white border-b border-slate-200 shadow-xs">
+        <div class="max-w-7xl mx-auto px-4 py-2">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                
+                <!-- Identidad Hospitalaria -->
+                <div class="flex items-center space-x-2.5">
+                    <div class="w-8 h-8 rounded bg-teal-800 flex items-center justify-center text-base text-white font-bold shadow-xs">
+                        ⚕️
+                    </div>
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <h1 class="font-bold text-sm tracking-wide text-slate-900 uppercase">Hospital Central San Rafael</h1>
+                            <span class="px-1.5 py-0.5 text-[10px] rounded bg-slate-100 text-slate-600 border border-slate-200 font-medium">Medicina Interna • Sala A</span>
+                        </div>
+                        <div class="flex items-center space-x-2 text-xs text-slate-500 font-mono-numbers mt-0.5">
+                            <span id="hud-day" class="text-teal-800 font-bold">DÍA 1</span>
+                            <span>•</span>
+                            <span id="hud-time" class="text-slate-800 font-bold text-xs bg-slate-100 px-1.5 py-0.2 rounded border border-slate-200">07:00</span>
+                            
+                            <!-- Barra de Turno -->
+                            <div class="hidden sm:flex items-center space-x-1.5 ml-2">
+                                <div class="w-16 bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                                    <div id="hud-shift-progress" class="bg-teal-700 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+                                </div>
+                                <span id="hud-shift-percent" class="text-[10px] text-slate-500 font-medium">0%</span>
+                                <span class="text-[10px] text-slate-400">(Jornada Asistencial)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Indicadores de Gestión Hospitalaria: Fondos, Reputación y Personal -->
+                <div class="flex flex-wrap items-center gap-2">
+                    
+                    <!-- Presupuesto -->
+                    <div class="bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200 flex items-center shadow-xs">
+                        <div>
+                            <div class="text-[9px] uppercase tracking-wider text-slate-500 font-bold">Presupuesto de Sala</div>
+                            <div id="hud-funds" class="font-mono-numbers font-bold text-xs sm:text-sm text-slate-900">$4,800.00</div>
+                        </div>
+                    </div>
+
+                    <!-- Reputación Asistencial -->
+                    <div class="bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200 flex items-center shadow-xs">
+                        <div>
+                            <div class="text-[9px] uppercase tracking-wider text-slate-500 font-bold">Calidad Asistencial</div>
+                            <div id="hud-reputation" class="font-mono-numbers font-bold text-xs sm:text-sm text-teal-800">85.00%</div>
+                        </div>
+                    </div>
+
+                    <!-- Personal Médico Activo -->
+                    <div class="bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200 flex items-center space-x-2.5 shadow-xs">
+                        <div>
+                            <div class="text-[9px] uppercase text-slate-500 font-bold">Médicos</div>
+                            <div id="hud-doctors" class="font-mono-numbers font-bold text-xs text-slate-800">3/3</div>
+                        </div>
+                        <div class="w-px h-4 bg-slate-300"></div>
+                        <div>
+                            <div class="text-[9px] uppercase text-slate-500 font-bold">Enfermería</div>
+                            <div id="hud-nurses" class="font-mono-numbers font-bold text-xs text-slate-800">5/5</div>
+                        </div>
+                    </div>
+
+                    <!-- BOTÓN: Búsqueda Epidemiológica & Patrones Clínicos -->
+                    <button onclick="openEpidemiologyModal()" class="btn-medical px-2.5 py-1.5 rounded-md bg-teal-800 hover:bg-teal-900 text-white font-semibold text-xs shadow-xs flex items-center space-x-1" title="Buscar por enfermedad, cohortes de pacientes y descubrir patrones clínicos">
+                        <span>Investigación & Patrones</span>
+                    </button>
+
+                    <!-- Botón Base de Datos EHR -->
+                    <button onclick="openHistoryModalDirectly()" class="btn-medical px-2.5 py-1.5 rounded-md bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs border border-slate-300 flex items-center space-x-1 shadow-xs" title="Ver registro histórico de pacientes activos, curados y dados de baja">
+                        <span>Historia Clínica (EHR)</span>
+                    </button>
+
+                    <!-- Botón de Farmacia / Insumos -->
+                    <button onclick="openStoreModal()" class="btn-medical px-2.5 py-1.5 rounded-md bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs border border-slate-300 flex items-center space-x-1 shadow-xs">
+                        <span>Farmacia</span>
+                    </button>
+
+                    <!-- Botón Interconsulta Senior -->
+                    <button onclick="requestMedicalClue()" class="btn-medical px-2 py-1.5 rounded-md bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs border border-slate-300 flex items-center space-x-1">
+                        <span id="hud-clues-text">Interconsulta (3/3)</span>
+                    </button>
+
+                    <!-- Botón Estación Diagnóstica Avanzada (CIE-11) -->
+                    <a href="diagnostic-station.html" class="btn-medical px-2 py-1.5 rounded-md bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold text-xs border border-slate-300 flex items-center space-x-1" title="Abrir Estación Diagnóstica Avanzada">
+                        <span class="hidden md:inline">CIE-11 Pro</span>
+                    </a>
+
+                    <!-- Botón Manual Clínico -->
+                    <button onclick="openTutorialModal()" class="btn-medical px-2 py-1.5 rounded-md bg-white hover:bg-slate-100 text-slate-600 font-semibold text-xs border border-slate-300 flex items-center space-x-1" title="Guía médica asistencial">
+                        <span>Guía</span>
+                    </button>
+                </div>
+
+                <!-- Velocidad de Simulación y Controles -->
+                <div class="flex items-center space-x-1">
+                    <div class="bg-slate-100 p-0.5 rounded-md border border-slate-200 flex items-center space-x-0.5">
+                        <button class="speed-btn px-1.5 py-1 rounded text-xs transition-colors" data-speed="0" title="Pausar Simulación">Pausa</button>
+                        <button class="speed-btn px-1.5 py-1 rounded text-xs transition-colors" data-speed="1" title="Velocidad Normal (1x)">1x</button>
+                        <button class="speed-btn px-1.5 py-1 rounded text-xs transition-colors" data-speed="2" title="Velocidad Rápida (2x)">2x</button>
+                        <button class="speed-btn px-1.5 py-1 rounded text-xs transition-colors" data-speed="3" title="Velocidad Ultra (3x)">3x</button>
+                    </div>
+
+                    <button id="btn-end-shift-quick" class="px-2 py-1 rounded-md bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 text-xs font-semibold" title="Cerrar turno de guardia (22:00)">
+                        Fin Turno
+                    </button>
+
+                    <button id="btn-sound-toggle" class="px-2 py-1 rounded-md bg-white hover:bg-slate-100 text-slate-700 text-xs border border-slate-300 transition-colors font-medium">
+                        Sonido ON
+                    </button>
+
+                    <button id="btn-reset-game" class="p-1 rounded-md bg-white hover:bg-rose-50 hover:text-rose-700 text-slate-500 text-xs border border-slate-300" title="Reiniciar datos de sala">
+                        Reiniciar
+                    </button>
+
+                    <button id="btn-theme-toggle" onclick="toggleTheme()" class="px-2 py-1 rounded-md bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 text-xs font-semibold flex items-center space-x-1 transition-colors" title="Alternar Modo Claro / Modo Guardia">
+                        <span id="theme-icon">🌙</span>
+                        <span id="theme-text" class="hidden sm:inline">Modo Guardia</span>
+                    </button>
+                </div>
+
+            </div>
+
+            <!-- Tira de Insumos Médicos (Stock de Sala) -->
+            <div class="mt-2 pt-1.5 border-t border-slate-100 flex items-center justify-between overflow-x-auto text-xs text-slate-600 gap-3">
+                <div class="flex items-center space-x-1 text-[10px] uppercase tracking-wider text-slate-500 font-bold shrink-0">
+                    <span>Stock de Sala:</span>
+                </div>
+                <div class="flex items-center space-x-2 shrink-0 font-mono-numbers text-xs">
+                    <span class="flex items-center space-x-1 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
+                        <span class="text-slate-600 font-medium">Antibióticos:</span>
+                        <strong id="sup-antibiotics" class="text-teal-800">12</strong>
+                    </span>
+                    <span class="flex items-center space-x-1 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
+                        <span class="text-slate-600 font-medium">Sueros IV:</span>
+                        <strong id="sup-serums" class="text-sky-800">16</strong>
+                    </span>
+                    <span class="flex items-center space-x-1 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
+                        <span class="text-slate-600 font-medium">Analgesia:</span>
+                        <strong id="sup-analgesics" class="text-slate-800">10</strong>
+                    </span>
+                    <span class="flex items-center space-x-1 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
+                        <span class="text-slate-600 font-medium">Oxígeno:</span>
+                        <strong id="sup-oxygen" class="text-emerald-800">8</strong>
+                    </span>
+                    <span class="flex items-center space-x-1 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
+                        <span class="text-slate-600 font-medium">Insulina:</span>
+                        <strong id="sup-insulin" class="text-amber-800">6</strong>
+                    </span>
+                </div>
+                <div class="text-[11px] text-teal-800 shrink-0 font-medium">
+                    <span>Soporte de Decisión Clínica (CDSS): Verificación activa de contraindicaciones alérgicas.</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- ÁREA PRINCIPAL: CUADRÍCULA ASISTENCIAL DE LAS 6 CAMAS -->
+    <main class="max-w-7xl mx-auto px-4 py-4 flex-1 w-full">
+        <!-- Encabezado de la Sala de Hospitalización -->
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-2.5">
+            <div>
+                <h2 class="text-base sm:text-lg font-bold text-slate-900">
+                    Pabellón de Hospitalización • Monitorización de Sala
+                </h2>
+                <p class="text-xs text-slate-500 mt-0.5">
+                    Pacientes ingresados en camas operativas. Evaluación de constantes vitales y administración terapéutica normada.
+                </p>
+            </div>
+
+            <!-- Leyenda de Triaje Manchester -->
+            <div class="flex items-center space-x-1.5 text-xs flex-wrap gap-1">
+                <span class="px-2 py-0.5 rounded border border-red-300 bg-red-50 text-red-700 text-[11px] font-semibold">Prioridad I (Crítico)</span>
+                <span class="px-2 py-0.5 rounded border border-amber-300 bg-amber-50 text-amber-700 text-[11px] font-semibold">Prioridad II (Grave)</span>
+                <span class="px-2 py-0.5 rounded border border-yellow-300 bg-yellow-50 text-yellow-800 text-[11px] font-semibold">Prioridad III (Moderado)</span>
+                <span class="px-2 py-0.5 rounded border border-emerald-300 bg-emerald-50 text-emerald-700 text-[11px] font-semibold">Prioridad IV (Estable)</span>
+                <span class="px-2 py-0.5 rounded border border-slate-300 bg-slate-100 text-slate-600 text-[11px] font-semibold">Deceso Certificado</span>
+            </div>
+        </div>
+
+        <!-- Rejilla de las 6 Camas -->
+        <div id="patients-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <!-- Las 6 tarjetas se generan dinámicamente desde app.js -->
+        </div>
+    </main>
+
+    <!-- REGISTRO DE EVENTOS ASISTENCIALES Y AUDITORÍA -->
+    <footer class="bg-white border-t border-slate-200 py-2.5 mt-6 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex items-center justify-between mb-1.5">
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center space-x-1.5">
+                    <span class="w-2 h-2 rounded-full bg-teal-600 animate-pulse"></span>
+                    <span>📡 Registro Asistencial y Auditoría de Sala en Tiempo Real</span>
+                </span>
+                <span class="text-[11px] text-slate-400 font-mono-numbers">Hospital Central San Rafael</span>
+            </div>
+            <div id="event-logs-list" class="max-h-20 overflow-y-auto space-y-1 pr-2 text-xs">
+                <!-- Logs dinámicos -->
+            </div>
+        </div>
+    </footer>
+
+    <!-- ===================================================================== -->
+    <!-- MODAL NUEVO: PRESCRIPCIÓN TERAPÉUTICA ASISTIDA (CDSS) Y ALERGIAS      -->
+    <!-- ===================================================================== -->
+    <div id="prescription-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div class="bg-white border border-slate-300 rounded-3xl w-full max-w-3xl shadow-2xl p-5 sm:p-7 relative my-6 text-slate-800">
+            
+            <!-- Cabecera de Prescripción Médica -->
+            <div class="flex items-center justify-between pb-3.5 border-b border-slate-200">
+                <div class="flex items-center space-x-3">
+                    <div class="w-11 h-11 rounded-2xl bg-teal-50 border border-teal-200 text-teal-700 flex items-center justify-center text-2xl font-bold shadow-xs">
+                        🩺
+                    </div>
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <h3 class="font-extrabold text-base sm:text-lg text-slate-900">PRESCRIPCIÓN TERAPÉUTICA & SOPORTE CDSS</h3>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-mono-numbers bg-sky-50 text-sky-700 border border-sky-200 font-bold">SEGURIDAD CLÍNICA</span>
+                        </div>
+                        <p class="text-xs text-slate-500">Evaluación computarizada para prevención de errores farmacológicos e interacciones</p>
+                    </div>
+                </div>
+                <button onclick="closePrescriptionModal()" class="text-slate-400 hover:text-slate-700 p-2 text-lg rounded-xl hover:bg-slate-100">✕</button>
+            </div>
+
+            <!-- Ficha Resumida del Paciente -->
+            <div id="presc-patient-strip" class="mt-4 bg-slate-50 p-3.5 rounded-2xl border border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
+                <!-- Cargado dinámicamente -->
+            </div>
+
+            <!-- BANNER DE ALERTA O SEGURIDAD CDSS -->
+            <div id="presc-cdss-banner" class="mt-3.5">
+                <!-- Se inyecta la alerta de alergia o recomendación de seguridad -->
+            </div>
+
+            <!-- SELECCIÓN DE PROTOCOLOS TERAPÉUTICOS -->
+            <div class="mt-4 space-y-3">
+                <h4 class="font-bold text-xs uppercase tracking-wider text-slate-700 flex items-center space-x-1.5">
+                    <span>💊</span>
+                    <span>Opciones de Tratamiento Disponibles para esta Patología:</span>
+                </h4>
+
+                <!-- Tarjeta Protocolo 1 (Estándar de Primera Línea) -->
+                <div id="presc-card-standard" class="treatment-card-option p-4">
+                    <!-- Contenido dinámico estándar -->
+                </div>
+
+                <!-- Tarjeta Protocolo 2 (Alternativo Seguro / Antialérgico) -->
+                <div id="presc-card-alternative" class="treatment-card-option p-4">
+                    <!-- Contenido dinámico alternativo -->
+                </div>
+
+                <!-- Tarjeta Tratamiento Contraindicado / Consecuencia (Para auditar error clínico) -->
+                <div id="presc-card-contraindicated" class="p-3.5 rounded-2xl border border-rose-200 bg-rose-50/50 text-xs">
+                    <!-- Contenido dinámico de advertencia -->
+                </div>
+            </div>
+
+            <div class="mt-5 pt-3 border-t border-slate-200 flex justify-end">
+                <button onclick="closePrescriptionModal()" class="px-5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold">
+                    Cancelar Prescripción
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- MODAL NUEVO: BÚSQUEDA EPIDEMIOLÓGICA POR ENFERMEDAD Y PATRONES CLÍNICOS -->
+    <!-- ===================================================================== -->
+    <div id="epidemiology-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div class="bg-white border border-slate-300 rounded-3xl w-full max-w-5xl shadow-2xl p-5 sm:p-7 relative my-6 text-slate-800">
+            
+            <!-- Cabecera del Módulo Epidemiológico -->
+            <div class="flex items-center justify-between pb-3.5 border-b border-slate-200">
+                <div class="flex items-center space-x-3.5">
+                    <div class="w-11 h-11 rounded-2xl bg-teal-50 border border-teal-200 text-teal-700 flex items-center justify-center text-2xl font-bold shadow-xs">
+                        🔬
+                    </div>
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <h3 class="font-extrabold text-base sm:text-lg text-slate-900">MÓDULO EPIDEMIOLÓGICO & DETECCIÓN DE PATRONES</h3>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-mono-numbers bg-teal-50 text-teal-800 border border-teal-200 font-bold">COHORTES CLÍNICAS</span>
+                        </div>
+                        <p class="text-xs text-slate-500">Investiga cualquier patología, analiza pacientes históricos y descubre correlaciones clínicas</p>
+                    </div>
+                </div>
+                <button onclick="closeEpidemiologyModal()" class="text-slate-400 hover:text-slate-700 p-2 text-lg rounded-xl hover:bg-slate-100">✕</button>
+            </div>
+
+            <!-- Buscador y Selector de Enfermedad -->
+            <div class="mt-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
+                    <div class="md:col-span-2">
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Seleccionar o Buscar Enfermedad en la Base de Datos:</label>
+                        <select id="epi-disease-select" onchange="onEpidemiologyDiseaseChange(this.value)" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-teal-900 focus:outline-none focus:border-teal-500 shadow-xs">
+                            <!-- Opciones cargadas dinámicamente con las 16+ enfermedades -->
+                        </select>
+                    </div>
+
+                    <!-- Botones de Acción de Análisis Clínico -->
+                    <div class="flex items-center gap-2 pt-2 md:pt-5">
+                        <button onclick="triggerPatternDiscovery()" class="btn-medical flex-1 py-2 px-3 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs shadow flex items-center justify-center space-x-1.5 border border-teal-800" title="Analizar síntomas comunes, edades y respuesta terapéutica de todos los pacientes">
+                            <span>🧠</span>
+                            <span>Encontrar Patrones</span>
+                        </button>
+
+                        <button onclick="triggerBaselineComparison()" class="btn-medical flex-1 py-2 px-3 rounded-xl bg-sky-700 hover:bg-sky-800 text-white font-bold text-xs shadow flex items-center justify-center space-x-1.5 border border-sky-800" title="Comparar estadísticas de esta enfermedad contra la media del hospital">
+                            <span>⚖️</span>
+                            <span>Comparar con BD</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Ficha Descriptiva de la Patología Seleccionada -->
+                <div id="epi-disease-info-card" class="mt-3 pt-3 border-t border-slate-200/80 text-xs">
+                    <!-- Cargado dinámicamente -->
+                </div>
+            </div>
+
+            <!-- PANEL DE PATRONES CLÍNICOS DETECTADOS (Desplegable) -->
+            <div id="epi-patterns-panel" class="mt-4 hidden">
+                <!-- Se inyectan los patrones calculados (síntomas prevalentes, edad media, etc.) -->
+            </div>
+
+            <!-- PANEL DE COMPARACIÓN CON LÍNEA BASE (Desplegable) -->
+            <div id="epi-comparison-panel" class="mt-4 hidden">
+                <!-- Se inyecta la comparación cara a cara contra el hospital -->
+            </div>
+
+            <!-- BARRA DE FILTROS Y ORDEN DE LA COHORTE DE PACIENTES -->
+            <div class="mt-4 flex flex-wrap items-center justify-between gap-2.5 pb-2 border-b border-slate-200">
+                <div class="flex flex-wrap items-center gap-1.5">
+                    <span class="text-xs font-bold text-slate-500 mr-1">Filtrar por:</span>
+                    <button onclick="filterEpidemiologyList('all')" id="epi-filter-all" class="px-2.5 py-1 rounded-lg bg-teal-600 text-white text-xs font-bold transition-all shadow-xs">Todos</button>
+                    <button onclick="filterEpidemiologyList('discharged')" id="epi-filter-discharged" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium transition-all">Curados (Altas) 🏆</button>
+                    <button onclick="filterEpidemiologyList('hospitalized')" id="epi-filter-hospitalized" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium transition-all">Hospitalizados 🩺</button>
+                    <button onclick="filterEpidemiologyList('deceased')" id="epi-filter-deceased" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium transition-all">Fallecidos 💀</button>
+                    <button onclick="filterEpidemiologyList('pediatric')" id="epi-filter-pediatric" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium transition-all">Pediátricos (&lt;18)</button>
+                    <button onclick="filterEpidemiologyList('geriatric')" id="epi-filter-geriatric" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium transition-all">Geriátricos (≥65)</button>
+                    <button onclick="filterEpidemiologyList('allergic')" id="epi-filter-allergic" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium transition-all">Con Alergias ⚠️</button>
+                </div>
+
+                <!-- Botón de Desordenar / Vista Exploratoria -->
+                <div class="flex items-center space-x-2">
+                    <button onclick="shuffleEpidemiologyList()" class="btn-medical px-3 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold border border-slate-300 flex items-center space-x-1" title="Desordenar la lista para exploración ciega">
+                        <span>🔀</span>
+                        <span>Desordenar Pacientes</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- CONTENEDOR DE LA COHORTE DE PACIENTES QUE TUVIERON ESTA ENFERMEDAD -->
+            <div class="mt-3">
+                <div class="flex items-center justify-between text-xs text-slate-500 mb-2 px-1">
+                    <span id="epi-patients-count-text">Mostrando pacientes de la cohorte</span>
+                    <span class="text-teal-700 font-medium">Haz clic en <strong>Ver Expediente</strong> en cualquier paciente para auditar sus síntomas y condiciones</span>
+                </div>
+
+                <div id="epi-patients-grid" class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[46vh] overflow-y-auto pr-1">
+                    <!-- Tarjetas de pacientes generadas dinámicamente -->
+                </div>
+            </div>
+
+            <div class="mt-5 pt-3 border-t border-slate-200 flex justify-end">
+                <button onclick="closeEpidemiologyModal()" class="px-5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold">
+                    Cerrar Módulo
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 1: MODIFICAR FICHA DEL PACIENTE -->
+    <div id="edit-patient-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white border border-slate-300 rounded-2xl w-full max-w-2xl shadow-2xl p-6 relative my-8 text-slate-800">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-200">
+                <div class="flex items-center space-x-2">
+                    <span class="text-xl">📋</span>
+                    <h3 id="edit-patient-title" class="font-extrabold text-base text-slate-900">Modificar Ficha Clínica</h3>
+                </div>
+                <button onclick="closeEditModal()" class="text-slate-400 hover:text-slate-700 p-1 text-lg">✕</button>
+            </div>
+
+            <form onsubmit="savePatientEdit(event)" class="mt-4 space-y-4">
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 flex items-center justify-between">
+                    <div>
+                        <span class="text-xs font-bold text-teal-800 flex items-center space-x-1">
+                            <span>🔒</span> <span>Estabilidad / Salud Clínica Actual (Solo Lectura)</span>
+                        </span>
+                        <span class="text-[11px] text-slate-500 block mt-0.5">
+                            Por balance clínico, la salud responde únicamente a tratamientos o maniobras médicas de estabilización.
+                        </span>
+                    </div>
+                    <span id="edit-health-locked" class="font-mono-numbers font-extrabold text-base text-teal-700 bg-white px-3 py-1.5 rounded-lg border border-slate-200">--%</span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Nombre Completo</label>
+                        <input id="edit-name" type="text" required class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-teal-600">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Edad (Años)</label>
+                        <input id="edit-age" type="number" min="1" max="110" required class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-teal-600">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Sexo</label>
+                        <select id="edit-gender" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-teal-600">
+                            <option value="M">Masculino</option>
+                            <option value="F">Femenino</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Grupo Sanguíneo</label>
+                        <input id="edit-blood" type="text" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-teal-600">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Alergias Conocidas</label>
+                        <input id="edit-allergy" type="text" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-teal-600">
+                    </div>
+                </div>
+
+                <div class="pt-2 border-t border-slate-200">
+                    <label class="block text-xs font-semibold text-teal-800 mb-1">Enfermedad Diagnosticada</label>
+                    <input id="edit-disease" type="text" required class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-teal-600 font-semibold">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Descripción Fisiopatológica</label>
+                    <textarea id="edit-disease-desc" rows="2" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-teal-600"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Síntomas Clave (separados por coma)</label>
+                    <input id="edit-symptoms" type="text" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-teal-600">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-emerald-800 mb-1">Posible Cura / Protocolo Terapéutico</label>
+                    <textarea id="edit-possible-cure" rows="2" required class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-teal-600"></textarea>
+                </div>
+
+                <div class="flex items-center justify-end space-x-3 pt-3 border-t border-slate-200">
+                    <button type="button" onclick="closeEditModal()" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs shadow">
+                        Guardar Cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 2: FARMACIA E INSUMOS -->
+    <div id="store-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+        <div class="bg-white border border-slate-300 rounded-2xl w-full max-w-xl shadow-2xl p-6 relative text-slate-800">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-200">
+                <div class="flex items-center space-x-2">
+                    <span class="text-2xl">🛒</span>
+                    <div>
+                        <h3 class="font-extrabold text-base text-slate-900">Farmacia y Gestión de Insumos</h3>
+                        <p class="text-xs text-slate-500">Adquiere lotes de fármacos, consultas o contrata personal de guardia.</p>
+                    </div>
+                </div>
+                <button onclick="closeStoreModal()" class="text-slate-400 hover:text-slate-700 p-1 text-lg">✕</button>
+            </div>
+
+            <div class="mt-4 flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200 mb-4">
+                <span class="text-xs text-slate-600 font-semibold">Presupuesto Asistencial Disponible:</span>
+                <span id="store-balance" class="font-mono-numbers font-black text-emerald-700 text-base">$4,800.00</span>
+            </div>
+
+            <div class="space-y-2.5 max-h-[58vh] overflow-y-auto pr-1">
+                <!-- Antibióticos -->
+                <div class="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <div class="flex items-center space-x-3">
+                        <span class="text-2xl">💊</span>
+                        <div>
+                            <div class="text-xs font-bold text-slate-900">Lote de Antibióticos (x5)</div>
+                            <div class="text-[11px] text-slate-500">Tratamiento para infecciones bacterianas</div>
+                        </div>
+                    </div>
+                    <button id="buy-btn-antibiotics" onclick="buyStoreItem('antibiotics')" class="px-3 py-1.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs">
+                        Comprar ($250)
+                    </button>
+                </div>
+
+                <!-- Sueros -->
+                <div class="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <div class="flex items-center space-x-3">
+                        <span class="text-2xl">🧪</span>
+                        <div>
+                            <div class="text-xs font-bold text-slate-900">Pack de Sueros Salinos (x5)</div>
+                            <div class="text-[11px] text-slate-500">Rehidratación y soporte intravenoso</div>
+                        </div>
+                    </div>
+                    <button id="buy-btn-serums" onclick="buyStoreItem('serums')" class="px-3 py-1.5 rounded-xl bg-sky-700 hover:bg-sky-800 text-white font-bold text-xs">
+                        Comprar ($150)
+                    </button>
+                </div>
+
+                <!-- Analgésicos -->
+                <div class="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <div class="flex items-center space-x-3">
+                        <span class="text-2xl">💉</span>
+                        <div>
+                            <div class="text-xs font-bold text-slate-900">Pack de Analgésicos Mayores (x5)</div>
+                            <div class="text-[11px] text-slate-500">Control de dolor agudo y traumatismos</div>
+                        </div>
+                    </div>
+                    <button id="buy-btn-analgesics" onclick="buyStoreItem('analgesics')" class="px-3 py-1.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs">
+                        Comprar ($200)
+                    </button>
+                </div>
+
+                <!-- Oxígeno -->
+                <div class="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <div class="flex items-center space-x-3">
+                        <span class="text-2xl">🫁</span>
+                        <div>
+                            <div class="text-xs font-bold text-slate-900">Recarga de Balones de O2 (x3)</div>
+                            <div class="text-[11px] text-slate-500">Soporte ventilatorio e hipoxia</div>
+                        </div>
+                    </div>
+                    <button id="buy-btn-oxygen" onclick="buyStoreItem('oxygen')" class="px-3 py-1.5 rounded-xl bg-teal-800 hover:bg-teal-900 text-white font-bold text-xs">
+                        Comprar ($300)
+                    </button>
+                </div>
+
+                <!-- Insulina -->
+                <div class="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <div class="flex items-center space-x-3">
+                        <span class="text-2xl">🧬</span>
+                        <div>
+                            <div class="text-xs font-bold text-slate-900">Viales de Insulina Rápida (x4)</div>
+                            <div class="text-[11px] text-slate-500">Control metabólico y cetoacidosis</div>
+                        </div>
+                    </div>
+                    <button id="buy-btn-insulin" onclick="buyStoreItem('insulin')" class="px-3 py-1.5 rounded-xl bg-amber-700 hover:bg-amber-800 text-white font-bold text-xs">
+                        Comprar ($280)
+                    </button>
+                </div>
+
+                <!-- Contratar Médico -->
+                <div class="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-sky-200">
+                    <div class="flex items-center space-x-3">
+                        <span class="text-2xl">🩺</span>
+                        <div>
+                            <div class="text-xs font-bold text-sky-900">Contratar Médico Especialista (+1)</div>
+                            <div class="text-[11px] text-slate-500">Permite atender casos graves y procedimientos</div>
+                        </div>
+                    </div>
+                    <button id="buy-btn-doctor" onclick="buyStoreItem('doctor')" class="px-3 py-1.5 rounded-xl bg-sky-700 hover:bg-sky-800 text-white font-bold text-xs">
+                        Contratar ($1,400)
+                    </button>
+                </div>
+
+                <!-- Contratar Enfermero -->
+                <div class="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-purple-200">
+                    <div class="flex items-center space-x-3">
+                        <span class="text-2xl">🩹</span>
+                        <div>
+                            <div class="text-xs font-bold text-purple-900">Contratar Enfermero/a (+1)</div>
+                            <div class="text-[11px] text-slate-500">Aumenta la capacidad de administración simultánea</div>
+                        </div>
+                    </div>
+                    <button id="buy-btn-nurse" onclick="buyStoreItem('nurse')" class="px-3 py-1.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs">
+                        Contratar ($800)
+                    </button>
+                </div>
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-slate-200 flex justify-end">
+                <button onclick="closeStoreModal()" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 3: REGISTRO HISTÓRICO EHR & RESUMEN DE JORNADA -->
+    <div id="scoreboard-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div class="bg-white border border-slate-300 rounded-3xl w-full max-w-5xl shadow-2xl p-5 sm:p-7 relative my-6 text-slate-800">
+            
+            <div class="flex items-center justify-between pb-3.5 border-b border-slate-200">
+                <div class="flex items-center space-x-3">
+                    <div class="w-11 h-11 rounded-2xl bg-teal-50 border border-teal-200 flex items-center justify-center text-2xl font-bold text-teal-700 shadow-xs">
+                        🗂️
+                    </div>
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <h3 class="font-extrabold text-base sm:text-lg text-slate-900">SISTEMA DE INFORMACIÓN HOSPITALARIA (HIS / EHR)</h3>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-mono-numbers bg-teal-50 text-teal-800 border border-teal-200 font-bold">HISTORIAL COMPLETO</span>
+                        </div>
+                        <p class="text-xs text-slate-500">Registro Clínico Centralizado: Consulta de síntomas, constantes y evolución de pacientes activos, curados y fallecidos</p>
+                    </div>
+                </div>
+                <button onclick="closeScoreboardModal()" class="text-slate-400 hover:text-slate-700 p-2 rounded-xl text-lg hover:bg-slate-100 transition-colors">✕</button>
+            </div>
+
+            <!-- KPIs Hospitalarios -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <div class="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Ocupación de Camas (TOC)</div>
+                    <div id="ehr-kpi-toc" class="font-mono-numbers font-black text-lg text-teal-700 mt-0.5">100.00%</div>
+                    <div id="ehr-kpi-toc-sub" class="text-[10px] text-slate-400">6 / 6 camas operativas</div>
+                </div>
+
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <div class="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Mortalidad Bruta (TMB)</div>
+                    <div id="ehr-kpi-tmb" class="font-mono-numbers font-black text-lg text-rose-700 mt-0.5">0.00%</div>
+                    <div id="ehr-kpi-tmb-sub" class="text-[10px] text-rose-600">0 defunciones</div>
+                </div>
+
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <div class="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Altas Médicas (TAC)</div>
+                    <div id="ehr-kpi-tac" class="font-mono-numbers font-black text-lg text-emerald-700 mt-0.5">100.00%</div>
+                    <div id="ehr-kpi-tac-sub" class="text-[10px] text-emerald-600">Recuperación exitosa</div>
+                </div>
+
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <div class="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Presupuesto Disponible</div>
+                    <div id="ehr-kpi-funds" class="font-mono-numbers font-black text-lg text-slate-900 mt-0.5">$4,800.00</div>
+                    <div class="text-[10px] text-emerald-600">Balance operativo</div>
+                </div>
+            </div>
+
+            <!-- Selector de Pestañas -->
+            <div class="flex items-center space-x-2 mt-4 border-b border-slate-200 pb-2.5 flex-wrap gap-y-2">
+                <button id="tab-btn-key-patients" onclick="switchDbTab('key-patients')" class="px-4 py-1.5 rounded-xl bg-teal-700 text-white font-bold text-xs shadow flex items-center space-x-1.5 transition-all">
+                    <span>📋</span>
+                    <span>Lista de Pacientes (Datos Clave)</span>
+                </button>
+                <button id="tab-btn-patients" onclick="switchDbTab('patients')" class="px-4 py-1.5 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 font-semibold text-xs flex items-center space-x-1.5 transition-all">
+                    <span>🗂️</span>
+                    <span>Registro Detallado EHR</span>
+                </button>
+                <button id="tab-btn-scoreboard" onclick="switchDbTab('scoreboard')" class="px-4 py-1.5 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 font-semibold text-xs flex items-center space-x-1.5 transition-all">
+                    <span>📊</span>
+                    <span>Resumen y Cierre de Turno</span>
+                </button>
+            </div>
+
+            <!-- PESTAÑA NUEVA: LISTA DE PACIENTES - DATOS CLAVE (PERSONA, OBRA SOCIAL, SANGRE, EDAD, VIVO/MUERTO, ENFERMEDAD) -->
+            <div id="db-content-key-patients" class="mt-3">
+                <div class="bg-slate-50 p-3 rounded-2xl border border-slate-200 flex flex-wrap items-center justify-between gap-2.5 mb-2.5">
+                    <div class="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
+                        <div class="relative flex-1 min-w-[180px]">
+                            <span class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400 text-xs">🔍</span>
+                            <input id="key-patients-search-input" oninput="filterKeyPatients()" type="text" placeholder="Buscar paciente, DNI, enfermedad, obra social..." class="w-full bg-white border border-slate-300 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-teal-600 font-mono-numbers">
+                        </div>
+
+                        <!-- Filtro de Estado Vital -->
+                        <select id="key-patients-status-filter" onchange="filterKeyPatients()" class="bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs text-slate-700 font-semibold focus:outline-none focus:border-teal-600">
+                            <option value="all">Todos los Estados</option>
+                            <option value="alive">🟢 Solo Vivos (Altas + Camas)</option>
+                            <option value="deceased">💀 Solo Muertos (Óbitos)</option>
+                            <option value="cured">🏆 Solo Curados (Altas Médicas)</option>
+                            <option value="hospitalized">🩺 Solo Hospitalizados (En Cama)</option>
+                        </select>
+
+                        <!-- Filtro de Grupo Sanguíneo -->
+                        <select id="key-patients-blood-filter" onchange="filterKeyPatients()" class="bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs text-slate-700 focus:outline-none focus:border-teal-600">
+                            <option value="all">Cualquier Grupo</option>
+                            <option value="O+">O+</option>
+                            <option value="O-">O-</option>
+                            <option value="A+">A+</option>
+                            <option value="A-">A-</option>
+                            <option value="B+">B+</option>
+                            <option value="B-">B-</option>
+                            <option value="AB+">AB+</option>
+                            <option value="AB-">AB-</option>
+                        </select>
+                    </div>
+
+                    <button onclick="exportEhrCSV()" class="btn-medical px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 font-bold text-xs flex items-center space-x-1.5 shadow-xs">
+                        <span>📥</span>
+                        <span>Exportar Lista</span>
+                    </button>
+                </div>
+
+                <div class="flex items-center justify-between text-xs text-slate-500 mb-2 px-1">
+                    <span id="key-patients-count-text">Mostrando censo de pacientes</span>
+                    <span class="text-teal-700 font-medium">📋 Información clave consolidada para control médico rápido</span>
+                </div>
+
+                <div class="overflow-x-auto max-h-[46vh] rounded-2xl border border-slate-200">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead class="ehr-table-header sticky top-0 z-10 bg-slate-100">
+                            <tr>
+                                <th class="py-2.5 px-3">Persona (Nombre / DNI)</th>
+                                <th class="py-2.5 px-3">Obra Social</th>
+                                <th class="py-2.5 px-3">Tipo de Sangre</th>
+                                <th class="py-2.5 px-3">Edad</th>
+                                <th class="py-2.5 px-3">Estado</th>
+                                <th class="py-2.5 px-3">Enfermedad (Diagnóstico)</th>
+                                <th class="py-2.5 px-3 text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="db-key-patients-table-body" class="divide-y divide-slate-100 font-mono-numbers">
+                            <!-- Filas dinámicas generadas desde app.js -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- PESTAÑA EHR REGISTRO DETALLADO -->
+            <div id="db-content-patients" class="hidden mt-3">
+                <div class="bg-slate-50 p-3 rounded-2xl border border-slate-200 flex flex-wrap items-center justify-between gap-3 mb-2.5">
+                    <div class="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
+                        <div class="relative flex-1 min-w-[180px]">
+                            <span class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400 text-xs">🔍</span>
+                            <input id="ehr-search-input" oninput="filterEhrPatients()" type="text" placeholder="Buscar por Nombre, RUT, CIE-10, síntoma o Cama..." class="w-full bg-white border border-slate-300 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-teal-600 font-mono-numbers">
+                        </div>
+
+                        <select id="ehr-status-filter" onchange="filterEhrPatients()" class="bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs text-slate-700 focus:outline-none focus:border-teal-600">
+                            <option value="all">Todos los Estados</option>
+                            <option value="Hospitalizado">Hospitalizado</option>
+                            <option value="Alta">Alta Médica (Curado)</option>
+                            <option value="Fallecido">Óbito (Fallecido)</option>
+                        </select>
+                    </div>
+
+                    <button onclick="exportEhrCSV()" class="btn-medical px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 font-bold text-xs flex items-center space-x-1.5 shadow-xs">
+                        <span>📥</span>
+                        <span>Exportar CSV</span>
+                    </button>
+                </div>
+
+                <div class="flex items-center justify-between text-xs text-slate-500 mb-2 px-1">
+                    <span id="ehr-count-text">Mostrando historias clínicas</span>
+                    <span class="text-teal-700">Pulsa <strong>Ver Epicrisis</strong> para auditar síntomas completos e historial</span>
+                </div>
+
+                <div class="overflow-x-auto max-h-[46vh] rounded-2xl border border-slate-200">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="ehr-table-header sticky top-0 z-10 bg-slate-100">
+                            <tr>
+                                <th class="py-2.5 px-3">Folio / HC</th>
+                                <th class="py-2.5 px-3">Cama</th>
+                                <th class="py-2.5 px-3">Paciente (RUT / Edad)</th>
+                                <th class="py-2.5 px-3">Diagnóstico</th>
+                                <th class="py-2.5 px-3">Triaje</th>
+                                <th class="py-2.5 px-3">Estado</th>
+                                <th class="py-2.5 px-3">Ingreso / Egreso</th>
+                                <th class="py-2.5 px-3 text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="db-patients-table-body" class="divide-y divide-slate-100 font-mono-numbers text-xs">
+                            <!-- Filas dinámicas -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- PESTAÑA SCOREBOARD Y CIERRE DE TURNO -->
+            <div id="db-content-scoreboard" class="hidden mt-3">
+                <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div class="flex items-center space-x-4">
+                        <div id="sb-rank-grade" class="font-black text-5xl text-amber-500 font-mono-numbers">A</div>
+                        <div>
+                            <div id="sb-day-title" class="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Evaluación de Gestión Clínica</div>
+                            <div id="sb-rank-title" class="text-base font-extrabold text-slate-900 mt-0.5">Gestión Sobresaliente</div>
+                            <div class="text-xs text-slate-500">Jornada archivada en la base de datos institucional.</div>
+                        </div>
+                    </div>
+
+                    <button onclick="startNextDayFromScoreboard()" class="btn-medical px-5 py-2.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs shadow flex items-center space-x-1.5">
+                        <span>🌅</span>
+                        <span>Iniciar Siguiente Turno</span>
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                        <div class="text-[10px] text-slate-500 uppercase font-semibold">Salvados (Altas)</div>
+                        <div id="sb-saved" class="text-xl font-black text-emerald-700 font-mono-numbers mt-0.5">0</div>
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                        <div class="text-[10px] text-slate-500 uppercase font-semibold">Óbitos</div>
+                        <div id="sb-lost" class="text-xl font-black text-rose-700 font-mono-numbers mt-0.5">0</div>
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                        <div class="text-[10px] text-slate-500 uppercase font-semibold">Tratamientos</div>
+                        <div id="sb-treatments" class="text-xl font-black text-teal-700 font-mono-numbers mt-0.5">0</div>
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                        <div class="text-[10px] text-slate-500 uppercase font-semibold">Supervivencia</div>
+                        <div id="sb-survival" class="text-xl font-black text-amber-600 font-mono-numbers mt-0.5">100.00%</div>
+                    </div>
+                </div>
+
+                <!-- DESGLOSE NOMINAL DE CURADOS Y FALLECIDOS DE ESTA JORNADA -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5 mt-3.5">
+                    <!-- Curados Hoy -->
+                    <div class="bg-emerald-50/60 p-3.5 rounded-2xl border border-emerald-200">
+                        <div class="flex items-center justify-between pb-2 border-b border-emerald-200 mb-2">
+                            <span class="text-xs font-bold text-emerald-900 flex items-center space-x-1.5">
+                                <span>🏆</span>
+                                <span>Pacientes Curados en esta Jornada (Altas)</span>
+                            </span>
+                            <span id="sb-cured-count-badge" class="px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-bold font-mono-numbers">0</span>
+                        </div>
+                        <div id="sb-cured-patients-list" class="space-y-1.5 max-h-40 overflow-y-auto text-xs pr-1">
+                            <div class="text-center py-3 text-slate-400 text-xs italic">Aún no se registran altas médicas en este turno.</div>
+                        </div>
+                    </div>
+
+                    <!-- Fallecidos Hoy -->
+                    <div class="bg-rose-50/60 p-3.5 rounded-2xl border border-rose-200">
+                        <div class="flex items-center justify-between pb-2 border-b border-rose-200 mb-2">
+                            <span class="text-xs font-bold text-rose-900 flex items-center space-x-1.5">
+                                <span>💀</span>
+                                <span>Pacientes Fallecidos en esta Jornada (Óbitos)</span>
+                            </span>
+                            <span id="sb-lost-count-badge" class="px-2 py-0.5 rounded-full bg-rose-600 text-white text-[10px] font-bold font-mono-numbers">0</span>
+                        </div>
+                        <div id="sb-deceased-patients-list" class="space-y-1.5 max-h-40 overflow-y-auto text-xs pr-1">
+                            <div class="text-center py-3 text-emerald-700 text-xs font-medium">Sin defunciones registradas hoy. ¡Excelente desempeño asistencial!</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-3 bg-slate-50 p-3 rounded-xl border border-slate-200 grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs font-mono-numbers">
+                    <div>
+                        <span class="text-slate-500 block text-[10px]">Ingresos:</span>
+                        <span id="sb-income" class="font-bold text-emerald-700">+$0.00</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-500 block text-[10px]">Costos:</span>
+                        <span id="sb-expenses" class="font-bold text-rose-700">-$0.00</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-500 block text-[10px]">Balance Neto:</span>
+                        <span id="sb-net" class="font-bold text-slate-900">+$0.00</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-500 block text-[10px]">Presupuesto Final:</span>
+                        <span id="sb-final-funds" class="font-bold text-slate-900">$4,800.00</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-500 block text-[10px]">Acreditación:</span>
+                        <span id="sb-reputation" class="font-bold text-amber-600">85.00%</span>
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-3 border-t border-slate-200">
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="font-bold text-xs uppercase text-slate-600">Histórico de Jornadas</h4>
+                        <span class="text-[11px] text-teal-700 font-medium">Haz clic en <strong>Ver Pacientes</strong> para auditar quién fue curado y quién falleció</span>
+                    </div>
+                    <div class="overflow-x-auto max-h-40 rounded-xl border border-slate-200">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead class="bg-slate-100 text-slate-600 text-[10px] uppercase">
+                                <tr>
+                                    <th class="py-1.5 px-3">Día</th>
+                                    <th class="py-1.5 px-3">Rango</th>
+                                    <th class="py-1.5 px-3">Salvados</th>
+                                    <th class="py-1.5 px-3">Óbitos</th>
+                                    <th class="py-1.5 px-3">Balance</th>
+                                    <th class="py-1.5 px-3">Presupuesto</th>
+                                    <th class="py-1.5 px-3 text-center">Pacientes Atendidos</th>
+                                </tr>
+                            </thead>
+                            <tbody id="history-table-body" class="divide-y divide-slate-100 font-mono-numbers">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-slate-200 flex justify-end">
+                <button onclick="closeScoreboardModal()" class="px-5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 4: EPICRISIS CLÍNICA Y AUDITORÍA DE CONDICIONES COMPLETAS (ACTIVOS, CURADOS Y FALLECIDOS) -->
+    <div id="ehr-detail-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div class="epicrisis-sheet rounded-3xl w-full max-w-3xl shadow-2xl p-6 sm:p-8 relative my-8 text-slate-800">
+            <div class="epicrisis-watermark">SAN RAFAEL</div>
+
+            <div class="border-b-2 border-slate-200 pb-3 flex items-center justify-between relative z-10">
+                <div class="flex items-center space-x-3">
+                    <div class="w-11 h-11 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-2xl font-bold text-teal-700">
+                        ⚕️
+                    </div>
+                    <div>
+                        <div class="institutional-seal text-xs font-extrabold text-teal-800 uppercase tracking-widest">Hospital Central San Rafael</div>
+                        <h3 class="text-base font-bold text-slate-900">Informe Clínico de Hospitalización y Epicrisis Completa</h3>
+                        <p class="text-[11px] text-slate-500" id="epicrisis-service-title">Departamento de Medicina y Cuidados de Sala</p>
+                    </div>
+                </div>
+                <div class="text-right font-mono-numbers text-xs">
+                    <div class="text-slate-500">Historia Clínica:</div>
+                    <div id="epicrisis-record-id" class="text-teal-800 font-extrabold text-sm">HC-2026-0000</div>
+                    <div id="epicrisis-folio" class="text-slate-500 text-[11px]">FOLIO: --</div>
+                </div>
+            </div>
+
+            <!-- Datos Filiatorios -->
+            <div class="mt-3.5 grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs bg-slate-50 p-3 rounded-xl border border-slate-200 relative z-10">
+                <div>
+                    <span class="text-slate-500 block text-[10px] uppercase font-bold">Paciente</span>
+                    <strong id="epicrisis-patient-name" class="text-slate-900 text-sm">--</strong>
+                </div>
+                <div>
+                    <span class="text-slate-500 block text-[10px] uppercase font-bold">RUT / DNI</span>
+                    <span id="epicrisis-patient-rut" class="font-mono-numbers text-slate-700">--</span>
+                </div>
+                <div>
+                    <span class="text-slate-500 block text-[10px] uppercase font-bold">Edad / Sexo</span>
+                    <span id="epicrisis-patient-age-gender" class="text-slate-700">--</span>
+                </div>
+                <div>
+                    <span class="text-slate-500 block text-[10px] uppercase font-bold">Grupo Sanguíneo</span>
+                    <span id="epicrisis-patient-blood" class="text-emerald-700 font-bold">--</span>
+                </div>
+                <div class="col-span-2">
+                    <span class="text-slate-500 block text-[10px] uppercase font-bold">Cobertura Médica</span>
+                    <span id="epicrisis-patient-insurance" class="text-slate-700">--</span>
+                </div>
+                <div class="col-span-2">
+                    <span class="text-slate-500 block text-[10px] uppercase font-bold">Alergias Documentadas</span>
+                    <span id="epicrisis-patient-allergy" class="text-rose-700 font-bold">--</span>
+                </div>
+            </div>
+
+            <!-- Diagnóstico y Cama -->
+            <div class="mt-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200 relative z-10">
+                <div class="flex items-center justify-between text-xs mb-1">
+                    <span class="text-[10px] uppercase font-bold text-teal-800 tracking-wider">Diagnóstico Principal (CIE-10 / CIE-11):</span>
+                    <span id="epicrisis-bed-unit" class="text-slate-600 font-mono-numbers text-[11px]">--</span>
+                </div>
+                <div id="epicrisis-cie10" class="font-mono-numbers font-bold text-sm text-slate-900">--</div>
+                <p id="epicrisis-description" class="text-xs text-slate-600 mt-1 leading-relaxed"></p>
+                
+                <div class="mt-2 pt-2 border-t border-slate-200">
+                    <span class="text-[10px] uppercase font-bold text-slate-500 tracking-wider block mb-0.5">Comorbilidades Documentadas:</span>
+                    <div id="epicrisis-comorbidities" class="text-xs text-slate-700">--</div>
+                </div>
+            </div>
+
+            <!-- SECCIÓN CRÍTICA: SÍNTOMAS REGISTRADOS (Curados, Activos o Fallecidos) -->
+            <div class="mt-3 bg-teal-50/50 p-3.5 rounded-xl border border-teal-200 relative z-10">
+                <span class="text-[10px] uppercase font-bold text-teal-900 tracking-wider block mb-1">
+                    🩺 Síntomas y Cuadro Clínico Presentado (Historial Completo):
+                </span>
+                <div id="epicrisis-symptoms-list" class="flex flex-wrap gap-1.5 mt-1 text-xs">
+                    <!-- Síntomas dinámicos -->
+                </div>
+            </div>
+
+            <!-- CONSTANTES VITALES HISTÓRICAS (Al ingreso y al egreso/óbito) -->
+            <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2.5 relative z-10 text-xs font-mono-numbers">
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <span class="text-[10px] uppercase font-bold text-slate-500 block mb-1">Constantes Vitales al Ingreso:</span>
+                    <div id="epicrisis-vitals-admission" class="text-slate-700 space-y-0.5">--</div>
+                </div>
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <span class="text-[10px] uppercase font-bold text-slate-500 block mb-1">Constantes Vitales al Egreso / Cierre:</span>
+                    <div id="epicrisis-vitals-discharge" class="text-slate-700 space-y-0.5">--</div>
+                </div>
+            </div>
+
+            <!-- Historial de Prescripción y Evolución -->
+            <div class="mt-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-xs relative z-10">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-[10px] uppercase font-bold text-slate-600 tracking-wider">Evolución Clínica y Estado de Cierre:</span>
+                    <span id="epicrisis-status-badge" class="px-2 py-0.5 rounded text-[10px] font-bold">--</span>
+                </div>
+                <p id="epicrisis-notes" class="text-slate-700 italic leading-relaxed"></p>
+
+                <!-- Historial de tratamientos administrados -->
+                <div id="epicrisis-treatment-history-box" class="mt-2 pt-2 border-t border-slate-200 text-[11px]">
+                    <!-- Tratamientos administrados y posibles reacciones -->
+                </div>
+            </div>
+
+            <div class="mt-5 pt-3 border-t border-slate-200 flex justify-end space-x-3 relative z-10">
+                <button onclick="window.print()" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center space-x-1.5">
+                    <span>🖨️</span>
+                    <span>Imprimir</span>
+                </button>
+                <button onclick="closeEhrDetailModal()" class="px-5 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs shadow">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 5: EXPEDIENTE CLÍNICO DE CAMA -->
+    <div id="dossier-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden items-center justify-center p-4 overflow-y-auto">
+        <div class="epicrisis-sheet rounded-3xl w-full max-w-3xl shadow-2xl p-6 sm:p-8 relative my-8 text-slate-800">
+            <div class="border-b-2 border-slate-200 pb-3 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-11 h-11 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-2xl font-bold text-teal-700">
+                        ⚕️
+                    </div>
+                    <div>
+                        <div class="institutional-seal text-xs font-extrabold text-teal-800 uppercase tracking-widest">Hospital Central San Rafael</div>
+                        <h3 class="text-base font-bold text-slate-900">Ficha Médica Ampliada & Monitor de Sala</h3>
+                        <p class="text-[11px] text-slate-500">Unidad de Cuidados Hospitalarios</p>
+                    </div>
+                </div>
+                <div class="text-right font-mono-numbers text-xs">
+                    <div class="text-slate-500">Historia Clínica:</div>
+                    <div id="dossier-record-id" class="text-teal-800 font-extrabold text-sm">HC-2026-0000</div>
+                    <div id="dossier-bed" class="text-slate-500 text-[11px]">CAMA 00</div>
+                </div>
+            </div>
+
+            <!-- Monitor Vital y ECG en Modal de Detalle -->
+            <div class="mt-3.5 vital-lcd p-3">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-[11px] font-mono-numbers font-bold uppercase tracking-wider flex items-center space-x-1.5 text-teal-800" id="dossier-rhythm-badge">
+                        <span class="inline-block w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
+                        <span id="dossier-rhythm-text">RITMO SINUSAL NORMAL</span>
+                    </span>
+                    <canvas id="dossier-ecg-canvas" width="220" height="28" class="bg-slate-50 rounded border border-slate-200"></canvas>
+                </div>
+                <div class="grid grid-cols-4 gap-2 text-center font-mono-numbers text-xs" id="dossier-vitals-grid">
+                    <div class="bg-slate-50 p-1.5 rounded border border-slate-200">
+                        <div class="text-[9px] text-slate-400 font-bold">PULSO</div>
+                        <div id="dossier-v-bpm" class="font-bold text-emerald-700 text-sm">--</div>
+                        <div class="text-[8px] text-slate-400">LPM</div>
+                    </div>
+                    <div class="bg-slate-50 p-1.5 rounded border border-slate-200">
+                        <div class="text-[9px] text-slate-400 font-bold">PRESIÓN</div>
+                        <div id="dossier-v-bp" class="font-bold text-sky-800 text-sm">--/--</div>
+                        <div class="text-[8px] text-slate-400">mmHg</div>
+                    </div>
+                    <div class="bg-slate-50 p-1.5 rounded border border-slate-200">
+                        <div class="text-[9px] text-slate-400 font-bold">SpO2</div>
+                        <div id="dossier-v-spo2" class="font-bold text-teal-700 text-sm">--%</div>
+                        <div class="text-[8px] text-slate-400">O2 SAT</div>
+                    </div>
+                    <div class="bg-slate-50 p-1.5 rounded border border-slate-200">
+                        <div class="text-[9px] text-slate-400 font-bold">TEMP</div>
+                        <div id="dossier-v-temp" class="font-bold text-slate-700 text-sm">--°C</div>
+                        <div class="text-[8px] text-slate-400">CORP</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Datos de Filiación y Cobertura -->
+            <div class="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs bg-slate-50 p-3 rounded-xl border border-slate-200">
+                <div>
+                    <span class="text-slate-500 block text-[10px] uppercase font-bold">Paciente</span>
+                    <strong id="dossier-name" class="text-slate-900 text-sm">--</strong>
+                </div>
+                <div>
+                    <span class="text-slate-500 block text-[10px] uppercase font-bold">RUT / DNI</span>
+                    <span id="dossier-dni" class="font-mono-numbers text-slate-700">--</span>
+                </div>
+                <div>
+                    <span class="text-slate-500 block text-[10px] uppercase font-bold">Edad / Sexo</span>
+                    <span id="dossier-age-gender" class="text-slate-700 font-mono-numbers">--</span>
+                </div>
+                <div>
+                    <span class="text-slate-500 block text-[10px] uppercase font-bold">Grupo Sanguíneo</span>
+                    <span id="dossier-blood" class="badge-blood-type">--</span>
+                </div>
+                <div class="col-span-2">
+                    <span class="text-slate-500 block text-[10px] uppercase font-bold">Obra Social / Cobertura</span>
+                    <span id="dossier-insurance" class="badge-insurance-tag">--</span>
+                </div>
+                <div class="col-span-2">
+                    <span class="text-slate-500 block text-[10px] uppercase font-bold">Alergias Documentadas</span>
+                    <span id="dossier-allergy" class="text-rose-700 font-bold">--</span>
+                </div>
+            </div>
+
+            <div class="mt-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-[10px] uppercase font-bold text-teal-800 tracking-wider">Diagnóstico Principal:</span>
+                    <span id="dossier-cie10" class="font-mono-numbers font-bold text-xs text-teal-800 bg-white px-2 py-0.5 rounded border border-slate-200">--</span>
+                </div>
+                <div id="dossier-disease-title" class="font-bold text-slate-900 text-sm mb-1">--</div>
+                <p id="dossier-description" class="text-xs text-slate-600 leading-relaxed"></p>
+                
+                <div class="mt-2.5 pt-2 border-t border-slate-200">
+                    <span class="text-[10px] uppercase font-bold text-slate-500 tracking-wider block mb-1">Signos y Síntomas Completos Documentados:</span>
+                    <div id="dossier-symptoms" class="flex flex-wrap gap-1.5 text-xs text-slate-700"></div>
+                </div>
+            </div>
+
+            <div class="mt-3 bg-teal-50/50 p-3.5 rounded-2xl border border-teal-200 text-xs">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-[10px] uppercase font-bold text-teal-900 tracking-wider">Plan Terapéutico Recomendado (CDSS):</span>
+                    <span id="dossier-treatment-status" class="text-xs font-bold text-teal-800 font-mono-numbers"></span>
+                </div>
+                <div id="dossier-possible-cure" class="text-xs text-teal-950 font-semibold mb-1 leading-snug"></div>
+                <div id="dossier-resources-strip" class="mt-2 flex flex-wrap gap-1.5 text-[11px]"></div>
+            </div>
+
+            <div class="mt-5 pt-3 border-t border-slate-200 flex items-center justify-between">
+                <button id="dossier-btn-prescribe" onclick="handleDossierPrescribe()" class="btn-medical px-4 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs shadow flex items-center space-x-1.5">
+                    <span>🩺</span>
+                    <span>Prescribir Terapia</span>
+                </button>
+                <button onclick="closeDossierModal()" class="px-5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold">
+                    Cerrar Detalle
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL NUEVO: AUDITORÍA DE PACIENTES DE JORNADAS HISTÓRICAS (CURADOS Y ÓBITOS) -->
+    <div id="shift-history-detail-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div class="bg-white border border-slate-300 rounded-3xl w-full max-w-3xl shadow-2xl p-5 sm:p-7 relative my-6 text-slate-800">
+            <div class="flex items-center justify-between pb-3.5 border-b border-slate-200">
+                <div class="flex items-center space-x-3">
+                    <div class="w-11 h-11 rounded-2xl bg-teal-50 border border-teal-200 text-teal-700 flex items-center justify-center text-2xl font-bold shadow-xs">
+                        📜
+                    </div>
+                    <div>
+                        <h3 class="font-extrabold text-base sm:text-lg text-slate-900" id="hist-modal-title">Detalle de Pacientes Atendidos - Día 1</h3>
+                        <p class="text-xs text-slate-500" id="hist-modal-subtitle">Auditoría nominal de altas médicas y defunciones</p>
+                    </div>
+                </div>
+                <button onclick="closeShiftHistoryDetailModal()" class="text-slate-400 hover:text-slate-700 p-2 rounded-xl text-lg hover:bg-slate-100">✕</button>
+            </div>
+
+            <!-- Resumen de Totales del Turno -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 text-xs font-mono-numbers">
+                <div class="bg-emerald-50 p-2.5 rounded-xl border border-emerald-200">
+                    <span class="text-slate-500 block text-[10px] font-sans">Altas (Curados)</span>
+                    <strong id="hist-modal-cured-count" class="text-emerald-700 text-lg">0</strong>
+                </div>
+                <div class="bg-rose-50 p-2.5 rounded-xl border border-rose-200">
+                    <span class="text-slate-500 block text-[10px] font-sans">Defunciones</span>
+                    <strong id="hist-modal-lost-count" class="text-rose-700 text-lg">0</strong>
+                </div>
+                <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                    <span class="text-slate-500 block text-[10px] font-sans">Calificación</span>
+                    <strong id="hist-modal-rank" class="text-amber-600 text-lg">A</strong>
+                </div>
+                <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                    <span class="text-slate-500 block text-[10px] font-sans">Balance Diario</span>
+                    <strong id="hist-modal-profit" class="text-slate-900 text-lg">+$0.00</strong>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <!-- Columna Curados -->
+                <div class="bg-emerald-50/50 p-3.5 rounded-2xl border border-emerald-200">
+                    <div class="font-bold text-xs text-emerald-900 flex items-center space-x-1.5 pb-2 border-b border-emerald-200/80 mb-2">
+                        <span>🏆</span>
+                        <span>Pacientes Curados (Altas Médicas)</span>
+                    </div>
+                    <div id="hist-modal-cured-list" class="space-y-2 max-h-56 overflow-y-auto text-xs pr-1">
+                    </div>
+                </div>
+
+                <!-- Columna Fallecidos -->
+                <div class="bg-rose-50/50 p-3.5 rounded-2xl border border-rose-200">
+                    <div class="font-bold text-xs text-rose-900 flex items-center space-x-1.5 pb-2 border-b border-rose-200/80 mb-2">
+                        <span>💀</span>
+                        <span>Pacientes Fallecidos (Óbitos)</span>
+                    </div>
+                    <div id="hist-modal-deceased-list" class="space-y-2 max-h-56 overflow-y-auto text-xs pr-1">
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-5 pt-3 border-t border-slate-200 flex justify-end">
+                <button onclick="closeShiftHistoryDetailModal()" class="px-5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold">
+                    Cerrar Auditoría
+                </button>
+            </div>
+        </div>
+    </div>
+        </div>
+    </div>
+
+    <!-- MODAL 6: CONSULTA SENIOR / PISTA -->
+    <div id="clue-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+        <div class="bg-white border border-amber-300 rounded-3xl w-full max-w-lg shadow-2xl p-6 relative text-slate-800">
+            <div class="flex items-center space-x-3 pb-3 border-b border-slate-200">
+                <div class="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-xl text-amber-700">
+                    💡
+                </div>
+                <div>
+                    <h3 class="font-extrabold text-base text-slate-900">Interconsulta con Jefe de Guardia</h3>
+                    <p id="clue-modal-subtitle" class="text-xs text-amber-700 font-mono-numbers">Consultas disponibles hoy: 3/3</p>
+                </div>
+            </div>
+
+            <div class="mt-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <div id="clue-modal-text" class="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">
+                </div>
+            </div>
+
+            <div class="mt-5 flex items-center justify-between flex-wrap gap-2 pt-3 border-t border-slate-200">
+                <button onclick="buyExtraClueDirect()" class="btn-medical px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs">
+                    Solicitar Consulta Adicional ($2,500)
+                </button>
+                <button onclick="closeClueModal()" class="px-4 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold">
+                    Entendido
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 7: EVENTO INESPERADO MAYOR -->
+    <div id="event-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+        <div class="bg-white border border-slate-300 rounded-3xl w-full max-w-lg shadow-2xl p-6 relative text-slate-800">
+            <div class="flex items-center space-x-3 pb-3 border-b border-slate-200">
+                <span id="event-icon" class="text-3xl">📢</span>
+                <div>
+                    <span class="text-[10px] uppercase font-bold text-indigo-700 tracking-widest block">Notificación Asistencial</span>
+                    <h3 id="event-title" class="font-black text-base text-slate-900">SUCESO EN SALA</h3>
+                </div>
+            </div>
+
+            <div class="mt-4 space-y-3">
+                <p id="event-desc" class="text-xs text-slate-600 leading-relaxed"></p>
+                <div class="bg-indigo-50 p-3 rounded-xl border border-indigo-200 text-xs text-indigo-900 font-semibold" id="event-effect"></div>
+            </div>
+
+            <div class="mt-5 flex items-center justify-end space-x-3 pt-3 border-t border-slate-200">
+                <button id="event-cancel-btn" onclick="dismissEventModal()" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold hidden">
+                    Omitir
+                </button>
+                <button id="event-action-btn" onclick="executeCurrentEventAction()" class="btn-medical px-5 py-2.5 rounded-xl bg-indigo-700 hover:bg-indigo-800 text-white font-extrabold text-xs shadow">
+                    Aceptar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 8: TUTORIAL Y MANUAL MÉDICO -->
+    <div id="tutorial-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white border border-slate-300 rounded-3xl w-full max-w-2xl shadow-2xl p-6 sm:p-8 relative my-8 text-slate-800">
+            <div class="flex items-center justify-between pb-3.5 border-b border-slate-200">
+                <div class="flex items-center space-x-3">
+                    <span class="text-3xl">📖</span>
+                    <div>
+                        <h3 class="font-extrabold text-lg text-slate-900">Guía Clínica y Manual del Médico de Guardia</h3>
+                        <p class="text-xs text-slate-500">Manejo de camas, prevención de errores por alergias y cohortes epidemiológicas.</p>
+                    </div>
+                </div>
+                <button onclick="closeTutorialModal()" class="text-slate-400 hover:text-slate-700 p-2 text-lg">✕</button>
+            </div>
+
+            <div class="mt-4 space-y-3 text-xs leading-relaxed max-h-[58vh] overflow-y-auto pr-1 text-slate-600">
+                <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                    <h4 class="font-bold text-sm text-teal-800 mb-1 flex items-center space-x-1.5">
+                        <span>🛡️</span> <span>1. Sistema de Soporte a Decisiones Clínicas (CDSS)</span>
+                    </h4>
+                    <p>Al pulsar <strong>'Prescribir Tratamiento'</strong> en cualquier cama, el sistema evaluará de forma inmediata los antecedentes y alergias del paciente. Si el paciente es alérgico a un antibiótico o fármaco del protocolo estándar (como Penicilina o AINEs), el sistema mostrará una advertencia destacada y te sugerirá el <strong>Protocolo Alternativo Seguro</strong>. Si administras el fármaco contraindicado, provocarás un shock anafiláctico con descompensación grave.</p>
+                </div>
+
+                <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                    <h4 class="font-bold text-sm text-sky-800 mb-1 flex items-center space-x-1.5">
+                        <span>🔬</span> <span>2. Módulo de Búsqueda Epidemiológica & Patrones</span>
+                    </h4>
+                    <p>En la barra superior dispones del botón <strong>'🔬 Búsqueda & Patrones'</strong>. Esta interfaz te permite seleccionar cualquiera de las 16+ enfermedades de la base de datos, ver la cohorte completa de pacientes (hospitalizados, curados y fallecidos) y hacer clic en <strong>'Encontrar Patrones'</strong> para calcular los síntomas más prevalentes, edades medias y comorbilidades. También puedes comparar la patología contra la línea base hospitalaria.</p>
+                </div>
+
+                <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                    <h4 class="font-bold text-sm text-emerald-800 mb-1 flex items-center space-x-1.5">
+                        <span>🗂️</span> <span>3. Historial Íntegro de Síntomas en Pacientes Curados o Fallecidos</span>
+                    </h4>
+                    <p>En el <strong>Registro EHR</strong> o en la cohorte epidemiológica, todos los expedientes de pacientes conservan su lista detallada de síntomas, signos vitales basales y tratamientos recibidos, asegurando la auditoría clínica completa con independencia de su condición de egreso.</p>
+                </div>
+            </div>
+
+            <div class="mt-5 pt-3 border-t border-slate-200 flex justify-end">
+                <button onclick="closeTutorialModal()" class="px-5 py-2.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs shadow">
+                    Entendido
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts de la Aplicación -->
+    <script src="js/data.js"></script>
+    <script src="js/audio.js"></script>
+    <script src="js/db.js"></script>
+    <script src="js/game.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

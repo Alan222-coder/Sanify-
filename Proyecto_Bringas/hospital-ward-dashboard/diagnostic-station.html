@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estación de Diagnóstico Clínico y Comparador Global CIE-11 | Hospital Central San Rafael</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+<body class="clinical-grid-bg min-h-screen text-slate-100 flex flex-col justify-between selection:bg-cyan-500 selection:text-slate-900">
+
+    <!-- CABECERA INSTITUCIONAL Y HUD CLÍNICO -->
+    <header class="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 shadow-2xl">
+        <div class="max-w-7xl mx-auto px-4 py-3">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                
+                <!-- Identidad de la Estación Médica -->
+                <div class="flex items-center space-x-3.5">
+                    <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-cyan-600 to-blue-600 flex items-center justify-center text-2xl shadow-lg shadow-cyan-500/20 font-bold border border-cyan-400/40">
+                        🔬
+                    </div>
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <h1 class="font-extrabold text-sm sm:text-base tracking-wide text-white uppercase">Estación de Diagnóstico Clínico & Razonamiento Médico</h1>
+                            <span class="px-2 py-0.5 text-[10px] rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold font-mono-numbers">CIE-11 PRO</span>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-0.5">
+                            Hospital Central San Rafael • Motor Diagnóstico a 3 Niveles: Sindromático, Paraclínico y Temporal
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Selector de Paciente y Navegación al Simulador -->
+                <div class="flex flex-wrap items-center gap-3">
+                    <div class="bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800 flex items-center space-x-2">
+                        <span class="text-xs text-slate-400 font-bold">Paciente Activo:</span>
+                        <select id="patient-selector-dropdown" onchange="window.diagnosticsStation.switchPatient(this.value)" class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-cyan-300 font-bold focus:outline-none focus:border-cyan-500 font-mono-numbers">
+                            <!-- Opciones cargadas dinámicamente -->
+                        </select>
+                    </div>
+
+                    <a href="index.html" class="btn-tycoon px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-bold text-xs border border-slate-700 flex items-center space-x-1.5 shadow-sm transition-all" title="Regresar al monitor de camas de la sala">
+                        <span>🏥</span>
+                        <span>Volver al Pabellón</span>
+                    </a>
+                </div>
+
+            </div>
+
+            <!-- Tira de Constantes Vitales en Tiempo Real del Paciente Seleccionado -->
+            <div class="mt-2.5 pt-2 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div class="flex items-center space-x-2">
+                    <span id="header-patient-name" class="font-bold text-white text-sm">Cargando...</span>
+                    <span id="header-patient-badge" class="px-2 py-0.5 rounded bg-slate-800 text-[11px] text-cyan-400 font-mono-numbers border border-slate-700">--</span>
+                </div>
+                <div id="header-vitals-strip" class="flex flex-wrap items-center gap-2">
+                    <!-- Constantes vitales dinámicas -->
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- BARRA DE PESTAÑAS DEL FLUJO DE TRABAJO MÉDICO -->
+    <nav class="bg-slate-950/80 border-b border-slate-800 sticky top-[108px] z-30 backdrop-blur-md">
+        <div class="max-w-7xl mx-auto px-4 py-2 flex items-center space-x-2 overflow-x-auto text-xs">
+            <button onclick="window.diagnosticsStation.switchTab('profile')" data-tab="profile" class="tab-btn px-4 py-2 rounded-xl bg-cyan-600 text-white font-bold shadow-lg shadow-cyan-600/30 flex items-center space-x-2 shrink-0 transition-all">
+                <span>📋</span>
+                <span>1. Perfil & Semiología</span>
+            </button>
+            <button onclick="window.diagnosticsStation.switchTab('oxygen')" data-tab="oxygen" class="tab-btn px-4 py-2 rounded-xl bg-slate-900 text-slate-400 hover:bg-slate-800 font-semibold flex items-center space-x-2 shrink-0 transition-all">
+                <span>🫁</span>
+                <span>2. Curva SpO2 Temporal</span>
+            </button>
+            <button onclick="window.diagnosticsStation.switchTab('labs')" data-tab="labs" class="tab-btn px-4 py-2 rounded-xl bg-slate-900 text-slate-400 hover:bg-slate-800 font-semibold flex items-center space-x-2 shrink-0 transition-all">
+                <span>🩸</span>
+                <span>3. Laboratorio Sanguíneo</span>
+            </button>
+            <button onclick="window.diagnosticsStation.switchTab('differential')" data-tab="differential" class="tab-btn px-4 py-2 rounded-xl bg-slate-900 text-slate-400 hover:bg-slate-800 font-semibold flex items-center space-x-2 shrink-0 transition-all">
+                <span>🧠</span>
+                <span>4. Motor Diferencial (3 Niveles)</span>
+            </button>
+            <button onclick="window.diagnosticsStation.switchTab('encyclopedia')" data-tab="encyclopedia" class="tab-btn px-4 py-2 rounded-xl bg-slate-900 text-slate-400 hover:bg-slate-800 font-semibold flex items-center space-x-2 shrink-0 transition-all">
+                <span>🌐</span>
+                <span>5. Base de Datos CIE-11</span>
+            </button>
+            <button onclick="window.diagnosticsStation.switchTab('compare')" data-tab="compare" class="tab-btn px-4 py-2 rounded-xl bg-slate-900 text-slate-400 hover:bg-slate-800 font-semibold flex items-center space-x-2 shrink-0 transition-all">
+                <span>⚖️</span>
+                <span>6. Comparador Frente a Frente</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- ÁREA DE CONTENIDO CLÍNICO -->
+    <main class="max-w-7xl mx-auto px-4 py-6 flex-1 w-full">
+
+        <!-- =================================================================== -->
+        <!-- PANEL 1: PERFIL CLÍNICO, ANTECEDENTES Y SEMIOLOGÍA DEL SÍNTOMA      -->
+        <!-- =================================================================== -->
+        <section id="panel-profile" class="tab-panel space-y-6">
+            
+            <!-- Resumen de Motivo de Consulta -->
+            <div class="bg-gradient-to-r from-slate-900 via-slate-900/90 to-cyan-950/40 p-5 rounded-2xl border border-slate-800 shadow-xl">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-cyan-400 flex items-center space-x-1 mb-1">
+                    <span>🗣️</span> <span>Motivo de Consulta y Enfermedad Actual (En palabras del paciente / Derivación):</span>
+                </span>
+                <p id="chief-complaint-text" class="text-sm font-semibold text-slate-100 leading-relaxed italic">
+                    Cargando motivo de consulta...
+                </p>
+            </div>
+
+            <!-- Grilla Principal: Demografía y Antecedentes a la izquierda, Semiología a la derecha -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                <!-- Columna Izquierda: Datos Demográficos y Antecedentes (La Base) -->
+                <div class="space-y-6">
+                    
+                    <!-- Datos Demográficos y Epidemiológicos -->
+                    <div class="bg-slate-900/90 p-5 rounded-2xl border border-slate-800 shadow-xl">
+                        <div class="flex items-center space-x-2 pb-3 border-b border-slate-800">
+                            <span class="text-lg">🌍</span>
+                            <h3 class="font-extrabold text-sm text-white uppercase tracking-wide">Datos Demográficos y Epidemiológicos Críticos</h3>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 mt-4 text-xs font-mono-numbers">
+                            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                                <span class="text-[10px] text-slate-500 uppercase font-sans font-bold block">Edad / Sexo Biológico</span>
+                                <strong id="demo-age-gender" class="text-white text-xs mt-0.5 block">--</strong>
+                            </div>
+                            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                                <span class="text-[10px] text-slate-500 uppercase font-sans font-bold block">Grupo Étnico</span>
+                                <strong id="demo-ethnicity" class="text-cyan-300 text-xs mt-0.5 block">--</strong>
+                            </div>
+                            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                                <span class="text-[10px] text-slate-500 uppercase font-sans font-bold block">Residencia Geográfica</span>
+                                <strong id="demo-residence" class="text-slate-300 text-xs mt-0.5 block">--</strong>
+                            </div>
+                            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                                <span class="text-[10px] text-slate-500 uppercase font-sans font-bold block">Viajes Recientes (Zonas Endémicas)</span>
+                                <strong id="demo-travel" class="text-amber-300 text-xs mt-0.5 block">--</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Antecedentes Médicos (La Base) -->
+                    <div class="bg-slate-900/90 p-5 rounded-2xl border border-slate-800 shadow-xl">
+                        <div class="flex items-center space-x-2 pb-3 border-b border-slate-800">
+                            <span class="text-lg">🧬</span>
+                            <h3 class="font-extrabold text-sm text-white uppercase tracking-wide">Antecedentes Médicos Estructurados</h3>
+                        </div>
+                        <div class="space-y-3 mt-4 text-xs">
+                            <div class="bg-slate-950/70 p-3 rounded-xl border border-slate-800">
+                                <span class="text-[10px] text-slate-400 uppercase font-bold flex items-center space-x-1">
+                                    <span>👨‍👩‍👦</span> <span>Heredofamiliares (Familia Directa):</span>
+                                </span>
+                                <p id="ante-family" class="text-slate-200 mt-1">--</p>
+                            </div>
+
+                            <div class="bg-slate-950/70 p-3 rounded-xl border border-slate-800">
+                                <span class="text-[10px] text-slate-400 uppercase font-bold flex items-center space-x-1">
+                                    <span>🩺</span> <span>Personales Patológicos (Comorbilidades):</span>
+                                </span>
+                                <p id="ante-personal" class="text-slate-200 mt-1">--</p>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div class="bg-slate-950/70 p-3 rounded-xl border border-slate-800">
+                                    <span class="text-[10px] text-slate-400 uppercase font-bold">Quirúrgicos:</span>
+                                    <p id="ante-surgical" class="text-slate-200 mt-0.5">--</p>
+                                </div>
+                                <div class="bg-slate-950/70 p-3 rounded-xl border border-amber-900/40">
+                                    <span class="text-[10px] text-amber-400 uppercase font-bold">Alergias Medicamentosas:</span>
+                                    <p id="ante-allergies" class="text-amber-300 font-semibold mt-0.5">--</p>
+                                </div>
+                            </div>
+
+                            <div class="bg-slate-950/70 p-3 rounded-xl border border-slate-800">
+                                <span class="text-[10px] text-slate-400 uppercase font-bold flex items-center space-x-1">
+                                    <span>💊</span> <span>Fármacos Habituales de Uso Continuo:</span>
+                                </span>
+                                <p id="ante-medications" class="text-slate-200 mt-1 font-mono-numbers">--</p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Columna Derecha: Semiología del Dolor (ALICIA) y Examen Físico Visual -->
+                <div class="space-y-6">
+
+                    <!-- Semiología del Dolor (Regla ALICIA / PQRST) -->
+                    <div class="bg-slate-900/90 p-5 rounded-2xl border border-slate-800 shadow-xl">
+                        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-lg">⚡</span>
+                                <h3 class="font-extrabold text-sm text-white uppercase tracking-wide">Semiología del Dolor y Síntoma Cardinal (ALICIA)</h3>
+                            </div>
+                            <span id="pain-eva-number" class="text-sm font-mono-numbers font-black text-rose-400">0 / 10</span>
+                        </div>
+
+                        <!-- Barra de Escala Visual Analógica (EVA) -->
+                        <div class="mt-3 bg-slate-950 p-3 rounded-xl border border-slate-800">
+                            <div class="flex items-center justify-between text-[11px] text-slate-400 mb-1">
+                                <span>Intensidad en Escala EVA (1 = Leve, 10 = Máximo dolor imaginable):</span>
+                            </div>
+                            <div class="w-full bg-slate-900 rounded-full h-2.5 overflow-hidden border border-slate-800">
+                                <div id="pain-eva-bar" class="bg-rose-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3 mt-3 text-xs">
+                            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                                <span class="text-[10px] text-slate-500 uppercase font-bold block">Localización</span>
+                                <strong id="pain-location" class="text-white mt-0.5 block">--</strong>
+                            </div>
+                            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                                <span class="text-[10px] text-slate-500 uppercase font-bold block">Irradiación</span>
+                                <strong id="pain-irradiation" class="text-slate-300 mt-0.5 block">--</strong>
+                            </div>
+                            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                                <span class="text-[10px] text-slate-500 uppercase font-bold block">Carácter / Tipo</span>
+                                <strong id="pain-character" class="text-cyan-300 mt-0.5 block">--</strong>
+                            </div>
+                            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                                <span class="text-[10px] text-slate-500 uppercase font-bold block">Agravantes</span>
+                                <strong id="pain-aggravating" class="text-rose-300 mt-0.5 block">--</strong>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800 mt-3 text-xs">
+                            <span class="text-[10px] text-slate-500 uppercase font-bold block">Atenuantes</span>
+                            <strong id="pain-relieving" class="text-emerald-300 mt-0.5 block">--</strong>
+                        </div>
+                    </div>
+
+                    <!-- Examen Físico e Inspector Visual (Ojos Rojos, Manchas en Piel) -->
+                    <div class="bg-slate-900/90 p-5 rounded-2xl border border-slate-800 shadow-xl">
+                        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-lg">👁️</span>
+                                <h3 class="font-extrabold text-sm text-white uppercase tracking-wide">Examen Físico Segmentado e Inspector Visual</h3>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <span id="avatar-badge-eyes" class="badge-sign text-[11px] bg-slate-800 px-2 py-0.5 rounded text-slate-400">Ojos</span>
+                                <span id="avatar-badge-skin" class="badge-sign text-[11px] bg-slate-800 px-2 py-0.5 rounded text-slate-400">Piel</span>
+                            </div>
+                        </div>
+
+                        <!-- Lista de Hallazgos Físicos -->
+                        <div class="space-y-2.5 mt-4 text-xs">
+                            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                                <div class="flex items-center justify-between mb-1">
+                                    <span class="text-[11px] font-bold text-cyan-400 flex items-center space-x-1.5">
+                                        <span>👁️</span> <span>Examen Ocular:</span>
+                                    </span>
+                                    <div class="flex items-center space-x-1">
+                                        <button onclick="window.diagnosticsStation.toggleClinicalSign('eyes', 'Inyección conjuntival bilateral (Ojos rojos marcados)')" class="px-1.5 py-0.5 bg-slate-800 hover:bg-slate-700 text-rose-300 rounded text-[10px]" title="Simular ojos rojos">Ojos Rojos</button>
+                                        <button onclick="window.diagnosticsStation.toggleClinicalSign('eyes', 'Escleras ictéricas (+)')" class="px-1.5 py-0.5 bg-slate-800 hover:bg-slate-700 text-amber-300 rounded text-[10px]" title="Simular ictericia">Ictericia</button>
+                                        <button onclick="window.diagnosticsStation.toggleClinicalSign('eyes', 'Normales')" class="px-1.5 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded text-[10px]" title="Resetear ojos">Normal</button>
+                                    </div>
+                                </div>
+                                <p id="exam-eyes-text" class="text-slate-200">--</p>
+                            </div>
+
+                            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                                <div class="flex items-center justify-between mb-1">
+                                    <span class="text-[11px] font-bold text-rose-400 flex items-center space-x-1.5">
+                                        <span>🧴</span> <span>Examen Dermatológico / Manchas en la Piel:</span>
+                                    </span>
+                                    <div class="flex items-center space-x-1">
+                                        <button onclick="window.diagnosticsStation.toggleClinicalSign('skin', 'Exantema maculopapular eritematoso confluente')" class="px-1.5 py-0.5 bg-slate-800 hover:bg-slate-700 text-rose-300 rounded text-[10px]" title="Simular manchas rojas">Manchas Rojas</button>
+                                        <button onclick="window.diagnosticsStation.toggleClinicalSign('skin', 'Petequias y púrpura palpable en extremidades')" class="px-1.5 py-0.5 bg-slate-800 hover:bg-slate-700 text-purple-300 rounded text-[10px]" title="Simular petequias">Petequias</button>
+                                        <button onclick="window.diagnosticsStation.toggleClinicalSign('skin', 'Normal')" class="px-1.5 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded text-[10px]" title="Resetear piel">Normal</button>
+                                    </div>
+                                </div>
+                                <p id="exam-skin-text" class="text-slate-200">--</p>
+                            </div>
+
+                            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                                <span class="text-[11px] font-bold text-purple-400 block mb-1">🧠 Estado Neurológico y Conciencia:</span>
+                                <p id="exam-neuro-text" class="text-slate-200 font-mono-numbers">--</p>
+                            </div>
+
+                            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                                <span class="text-[11px] font-bold text-blue-400 block mb-1">🫁 Examen Cardiopulmonar:</span>
+                                <p id="exam-cardio-text" class="text-slate-200">--</p>
+                            </div>
+
+                            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                                <span class="text-[11px] font-bold text-emerald-400 block mb-1">🫄 Examen Abdominal:</span>
+                                <p id="exam-abdomen-text" class="text-slate-200">--</p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+        <!-- =================================================================== -->
+        <!-- PANEL 2: MONITOREO CONTINUO DE OXÍGENO (SpO2) Y LÍNEA DE TIEMPO    -->
+        <!-- =================================================================== -->
+        <section id="panel-oxygen" class="tab-panel hidden space-y-6">
+            
+            <!-- Tira de Indicadores Oximétricos Clave -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                <div class="bg-slate-900/90 p-3.5 rounded-2xl border border-slate-800 shadow-lg">
+                    <span class="text-[10px] text-slate-400 uppercase font-bold block">SpO2 Actual</span>
+                    <div id="o2-metric-current" class="font-mono-numbers text-2xl font-black text-cyan-400 mt-0.5">--%</div>
+                    <span class="text-[10px] text-slate-500">Última lectura</span>
+                </div>
+
+                <div class="bg-slate-900/90 p-3.5 rounded-2xl border border-slate-800 shadow-lg">
+                    <span class="text-[10px] text-slate-400 uppercase font-bold block">SpO2 Mínima</span>
+                    <div id="o2-metric-min" class="font-mono-numbers text-2xl font-black text-rose-400 mt-0.5">--%</div>
+                    <span class="text-[10px] text-rose-500/80">Nadir registrado</span>
+                </div>
+
+                <div class="bg-slate-900/90 p-3.5 rounded-2xl border border-slate-800 shadow-lg">
+                    <span class="text-[10px] text-slate-400 uppercase font-bold block">SpO2 Máxima</span>
+                    <div id="o2-metric-max" class="font-mono-numbers text-2xl font-black text-emerald-400 mt-0.5">--%</div>
+                    <span class="text-[10px] text-emerald-500/80">Pico con soporte</span>
+                </div>
+
+                <div class="bg-slate-900/90 p-3.5 rounded-2xl border border-slate-800 shadow-lg">
+                    <span class="text-[10px] text-slate-400 uppercase font-bold block">SpO2 Promedio</span>
+                    <div id="o2-metric-avg" class="font-mono-numbers text-2xl font-black text-white mt-0.5">--%</div>
+                    <span class="text-[10px] text-slate-500">Media de estancia</span>
+                </div>
+
+                <div class="bg-slate-900/90 p-3.5 rounded-2xl border border-slate-800 shadow-lg">
+                    <span class="text-[10px] text-slate-400 uppercase font-bold block">Eventos Hipoxemia</span>
+                    <div id="o2-metric-hypox" class="font-mono-numbers text-lg font-black text-amber-400 mt-1">--</div>
+                    <span class="text-[10px] text-slate-500">SpO2 &lt; 92%</span>
+                </div>
+
+                <div class="bg-slate-900/90 p-3.5 rounded-2xl border border-slate-800 shadow-lg">
+                    <span class="text-[10px] text-slate-400 uppercase font-bold block">Soporte Oxígeno</span>
+                    <div id="o2-metric-support" class="text-xs font-bold text-teal-300 mt-1 truncate">--</div>
+                    <span class="text-[10px] text-slate-500">Dispositivo actual</span>
+                </div>
+            </div>
+
+            <!-- Gráfico Interactivo de Trayectoria de Oxígeno -->
+            <div class="bg-slate-900/90 p-5 rounded-3xl border border-slate-800 shadow-2xl">
+                <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800 mb-4">
+                    <div>
+                        <h3 class="font-black text-base text-white flex items-center space-x-2">
+                            <span>📈</span>
+                            <span>Evolución Temporal de Saturación de Oxígeno (SpO2) Durante la Internación</span>
+                        </h3>
+                        <p class="text-xs text-slate-400">Curva continua registrada desde el ingreso (07:00 h). Zonas de alerta clínica coloreadas.</p>
+                    </div>
+
+                    <!-- Leyenda de Zonas Oximétricas -->
+                    <div class="flex items-center space-x-3 text-xs font-mono-numbers">
+                        <span class="flex items-center space-x-1.5"><span class="w-3 h-3 rounded bg-emerald-500/30 border border-emerald-500"></span> <span class="text-emerald-400 font-semibold">Normoxemia (≥95%)</span></span>
+                        <span class="flex items-center space-x-1.5"><span class="w-3 h-3 rounded bg-amber-500/30 border border-amber-500"></span> <span class="text-amber-400 font-semibold">Hipoxemia Leve (90-94%)</span></span>
+                        <span class="flex items-center space-x-1.5"><span class="w-3 h-3 rounded bg-rose-500/30 border border-rose-500"></span> <span class="text-rose-400 font-semibold">Hipoxemia Severa (&lt;90%)</span></span>
+                    </div>
+                </div>
+
+                <!-- Contenedor del Gráfico SVG Vectorial -->
+                <div id="o2-chart-container" class="w-full h-64 bg-slate-950 rounded-2xl border border-slate-800 relative overflow-hidden shadow-inner flex items-center justify-center">
+                    <!-- Gráfico SVG dibujado por diagnostics.js -->
+                </div>
+            </div>
+
+            <!-- Tabla de Registros Horarios de Oxígeno -->
+            <div class="bg-slate-900/90 p-5 rounded-3xl border border-slate-800 shadow-xl">
+                <h4 class="font-bold text-sm text-white mb-3 flex items-center space-x-2">
+                    <span>⏱️</span>
+                    <span>Registro Cronológico Detallado de Lecturas Oximétricas</span>
+                </h4>
+                <div class="overflow-x-auto max-h-60 rounded-xl border border-slate-800 shadow-inner">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead class="bg-slate-950 sticky top-0 z-10 text-slate-400 text-[11px] font-mono-numbers uppercase">
+                            <tr>
+                                <th class="py-2.5 px-3">Hora Simulación</th>
+                                <th class="py-2.5 px-3">SpO2 (%)</th>
+                                <th class="py-2.5 px-3">Estado Clínico</th>
+                                <th class="py-2.5 px-3">Frecuencia Cardíaca</th>
+                                <th class="py-2.5 px-3">Soporte / Dispositivo de O2</th>
+                            </tr>
+                        </thead>
+                        <tbody id="o2-history-table-body" class="divide-y divide-slate-800 font-mono-numbers">
+                            <!-- Filas dinámicas -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- =================================================================== -->
+        <!-- PANEL 3: LABORATORIO SANGUÍNEO COMPLETO (PARACLÍNICOS OBJETIVOS)   -->
+        <!-- =================================================================== -->
+        <section id="panel-labs" class="tab-panel hidden space-y-6">
+
+            <!-- Estado Vacío (Si no tiene laboratorio hecho) -->
+            <div id="labs-empty-state" class="hidden bg-slate-900 p-8 rounded-3xl border border-slate-800 text-center space-y-4 shadow-xl">
+                <span class="text-5xl block">🧪</span>
+                <h3 class="text-lg font-bold text-white">No hay Analítica Sanguínea Registrada</h3>
+                <p class="text-xs text-slate-400 max-w-md mx-auto">
+                    El paciente aún no cuenta con un perfil paraclínico procesado en este episodio hospitalario. Solicita la extracción para obtener hemograma, bioquímica y gases.
+                </p>
+                <button onclick="window.diagnosticsStation.requestNewLabTest()" class="px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs shadow-lg shadow-cyan-600/30">
+                    Procesar Muestra Sanguínea Inmediata
+                </button>
+            </div>
+
+            <!-- Contenido del Laboratorio -->
+            <div id="labs-content-grid" class="space-y-6">
+                
+                <!-- Encabezado de Laboratorio con Acción de Repetición -->
+                <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-900/90 p-4 rounded-2xl border border-slate-800">
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-xl">🧪</span>
+                            <h3 class="font-black text-sm text-white uppercase">Panel de Laboratorio Sanguíneo y Paraclínicos Objetivos</h3>
+                        </div>
+                        <span id="labs-timestamp" class="text-xs text-slate-400 font-mono-numbers">Muestra extraída a las --</span>
+                    </div>
+
+                    <button onclick="window.diagnosticsStation.requestNewLabTest()" class="btn-tycoon px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-xs shadow-lg flex items-center space-x-1.5 border border-cyan-400/40">
+                        <span>🔄</span>
+                        <span>Solicitar / Repetir Analítica Sanguínea</span>
+                    </button>
+                </div>
+
+                <!-- 4 Módulos Paraclínicos -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                    <!-- Panel 1: Hemograma y Serie Blanca -->
+                    <div class="bg-slate-900/90 p-5 rounded-2xl border border-slate-800 shadow-xl">
+                        <div class="flex items-center space-x-2 pb-3 border-b border-slate-800 mb-2">
+                            <span class="text-base">🩸</span>
+                            <h4 class="font-extrabold text-sm text-white">1. Hemograma Completo y Coagulación</h4>
+                        </div>
+                        <div class="space-y-1">
+                            <div id="lab-leukocytes"></div>
+                            <div id="lab-neutrophils"></div>
+                            <div id="lab-hemoglobin"></div>
+                            <div id="lab-hematocrit"></div>
+                            <div id="lab-platelets"></div>
+                        </div>
+                    </div>
+
+                    <!-- Panel 2: Bioquímica y Función Renal -->
+                    <div class="bg-slate-900/90 p-5 rounded-2xl border border-slate-800 shadow-xl">
+                        <div class="flex items-center space-x-2 pb-3 border-b border-slate-800 mb-2">
+                            <span class="text-base">🧬</span>
+                            <h4 class="font-extrabold text-sm text-white">2. Bioquímica, Glucemia e Iones</h4>
+                        </div>
+                        <div class="space-y-1">
+                            <div id="lab-glucose"></div>
+                            <div id="lab-urea"></div>
+                            <div id="lab-creatinine"></div>
+                            <div id="lab-sodium"></div>
+                            <div id="lab-potassium"></div>
+                            <div id="lab-chlorine"></div>
+                        </div>
+                    </div>
+
+                    <!-- Panel 3: Gasometría Arterial y Ácido-Base -->
+                    <div class="bg-slate-900/90 p-5 rounded-2xl border border-slate-800 shadow-xl">
+                        <div class="flex items-center space-x-2 pb-3 border-b border-slate-800 mb-2">
+                            <span class="text-base">🫁</span>
+                            <h4 class="font-extrabold text-sm text-white">3. Gasometría Arterial y Lactato</h4>
+                        </div>
+                        <div class="space-y-1">
+                            <div id="lab-ph"></div>
+                            <div id="lab-pao2"></div>
+                            <div id="lab-paco2"></div>
+                            <div id="lab-bicarbonate"></div>
+                            <div id="lab-lactate"></div>
+                        </div>
+                    </div>
+
+                    <!-- Panel 4: Biomarcadores Críticos -->
+                    <div class="bg-slate-900/90 p-5 rounded-2xl border border-slate-800 shadow-xl">
+                        <div class="flex items-center space-x-2 pb-3 border-b border-slate-800 mb-2">
+                            <span class="text-base">🚨</span>
+                            <h4 class="font-extrabold text-sm text-white">4. Biomarcadores Inflamatorios y Cardíacos</h4>
+                        </div>
+                        <div class="space-y-1">
+                            <div id="lab-crp"></div>
+                            <div id="lab-procalcitonin"></div>
+                            <div id="lab-troponin"></div>
+                            <div id="lab-dimerd"></div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Interpretación Médica Automatizada -->
+                <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-xs">
+                    <span class="text-[10px] uppercase font-bold text-cyan-400 block mb-1">💡 Auditoría Fisiopatológica Paraclínica:</span>
+                    <p id="labs-interpretation-summary" class="text-slate-300 leading-relaxed font-mono-numbers">
+                        Cargando interpretación...
+                    </p>
+                </div>
+
+            </div>
+
+        </section>
+
+        <!-- =================================================================== -->
+        <!-- PANEL 4: MOTOR DE SIMILITUD Y DIAGNÓSTICO DIFERENCIAL (3 NIVELES)   -->
+        <!-- =================================================================== -->
+        <section id="panel-differential" class="tab-panel hidden space-y-6">
+
+            <!-- Encabezado del Motor Clínico -->
+            <div class="bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 p-5 rounded-2xl border border-indigo-900/50 shadow-xl">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-2xl">🧠</span>
+                            <h3 class="font-black text-base text-white uppercase">Motor de Similitud Médica a 3 Niveles</h3>
+                        </div>
+                        <p class="text-xs text-slate-300 mt-1">
+                            Cálculo de compatibilidad probabilística cruzando: <strong>Nivel 1 (Sindromático &amp; Signos Oculares/Piel)</strong> + <strong>Nivel 2 (Paraclínico/Labs &amp; SpO2)</strong> + <strong>Nivel 3 (Cinética Temporal)</strong>.
+                        </p>
+                    </div>
+                    <span class="px-3 py-1 rounded-xl bg-indigo-950 text-indigo-300 border border-indigo-700 text-xs font-mono-numbers font-bold">
+                        Algoritmo Bayesiano Clínico
+                    </span>
+                </div>
+            </div>
+
+            <!-- Contenedor de Alertas Red Flag / Regla de Oro -->
+            <div id="diff-red-flags-container">
+                <!-- Alertas automáticas para patologías mortales no descartables -->
+            </div>
+
+            <!-- Lista del Top 5 de Diagnósticos Diferenciales -->
+            <div class="space-y-3">
+                <div class="flex items-center justify-between px-1">
+                    <h4 class="font-bold text-sm text-white flex items-center space-x-1.5">
+                        <span>🏆</span>
+                        <span>Top 5 Patologías Más Compatibles con el Cuadro Actual:</span>
+                    </h4>
+                    <span class="text-xs text-slate-400 font-mono-numbers">Estratificadas por congruencia clínica</span>
+                </div>
+
+                <div id="diff-top5-list" class="space-y-3">
+                    <!-- Tarjetas del Top 5 generadas por diagnostics.js -->
+                </div>
+            </div>
+
+        </section>
+
+        <!-- =================================================================== -->
+        <!-- PANEL 5: BASE DE DATOS MUNDIAL Y CATÁLOGO CIE-11                   -->
+        <!-- =================================================================== -->
+        <section id="panel-encyclopedia" class="tab-panel hidden space-y-6">
+
+            <!-- Barra de Búsqueda y Filtros de Especialidad -->
+            <div class="bg-slate-900/90 p-4 rounded-2xl border border-slate-800 shadow-xl space-y-3">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <h3 class="font-extrabold text-sm text-white uppercase flex items-center space-x-2">
+                            <span>🌐</span>
+                            <span>Enciclopedia y Base de Datos Médica de Patologías del Mundo</span>
+                        </h3>
+                        <p class="text-xs text-slate-400">Indexadas con CIE-11, CIE-10 y SNOMED-CT con perfiles fisiopatológicos completos.</p>
+                    </div>
+                    <span id="encyclopedia-count" class="text-xs text-cyan-400 font-mono-numbers">--</span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-800">
+                    <!-- Búsqueda en vivo -->
+                    <div class="relative sm:col-span-2">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500 text-xs">🔍</span>
+                        <input id="encyclopedia-search-input" oninput="window.diagnosticsStation.onSearchInput(this.value)" type="text" placeholder="Buscar por enfermedad, síntoma ('ojos rojos', 'manchas en la piel'), CIE-11 o CIE-10..." class="w-full bg-slate-950 border border-slate-700 rounded-xl pl-9 pr-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono-numbers">
+                    </div>
+
+                    <!-- Filtro por Especialidad -->
+                    <div>
+                        <select id="encyclopedia-category-select" onchange="window.diagnosticsStation.onCategoryFilterChange(this.value)" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500">
+                            <option value="all">Todas las Especialidades</option>
+                            <option value="Neumología">Neumología y Respiratorio</option>
+                            <option value="Infectología">Infectología y Medicina Tropical</option>
+                            <option value="Cardiología">Cardiología y Vascular</option>
+                            <option value="Neurología">Neurología</option>
+                            <option value="Gastroenterología">Gastroenterología y Abdomen Agudo</option>
+                            <option value="Endocrinología">Endocrinología y Metabolismo</option>
+                            <option value="Dermatología">Dermatología y Alergología</option>
+                            <option value="Reumatología">Reumatología y Autoinmunes</option>
+                            <option value="Nefrología">Nefrología y Urología</option>
+                            <option value="Toxicología">Toxicología y Urgencias</option>
+                            <option value="Pediatría">Pediatría</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Grilla de Tarjetas de Enfermedades -->
+            <div id="encyclopedia-cards-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                <!-- Tarjetas cargadas dinámicamente -->
+            </div>
+
+        </section>
+
+        <!-- =================================================================== -->
+        <!-- PANEL 6: COMPARADOR CLÍNICO FRENTE A FRENTE                        -->
+        <!-- =================================================================== -->
+        <section id="panel-compare" class="tab-panel hidden space-y-6">
+
+            <!-- Selector de Modo de Comparación -->
+            <div class="bg-slate-900/90 p-5 rounded-2xl border border-slate-800 shadow-xl flex flex-wrap items-center justify-between gap-4">
+                <div>
+                    <h3 class="font-extrabold text-sm text-white uppercase flex items-center space-x-2">
+                        <span>⚖️</span>
+                        <span>Comparador Diferencial Cara a Cara</span>
+                    </h3>
+                    <p class="text-xs text-slate-400 mt-0.5">Analiza parámetros de oxígeno, laboratorio, signos físicos y terapéutica lado a lado.</p>
+                </div>
+
+                <div class="flex items-center space-x-4 text-xs font-semibold">
+                    <label class="flex items-center space-x-1.5 cursor-pointer">
+                        <input id="compare-mode-patient" type="radio" name="compare-mode" checked onchange="window.diagnosticsStation.renderDualComparator()" class="text-cyan-600 focus:ring-0">
+                        <span class="text-slate-200">Paciente vs Enfermedad de Base de Datos</span>
+                    </label>
+                    <label class="flex items-center space-x-1.5 cursor-pointer">
+                        <input id="compare-mode-disease" type="radio" name="compare-mode" onchange="window.diagnosticsStation.renderDualComparator()" class="text-cyan-600 focus:ring-0">
+                        <span class="text-slate-200">Enfermedad A vs Enfermedad B</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Tabla Comparativa de Parámetros -->
+            <div class="bg-slate-900/90 rounded-3xl border border-slate-800 shadow-2xl overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-slate-950 text-xs uppercase font-mono-numbers text-slate-400 border-b border-slate-800">
+                            <tr>
+                                <th class="py-3.5 px-4 w-1/4">Variable Clínica</th>
+                                <th id="comp-left-title" class="py-3.5 px-4 w-3/8 text-white">Lado Izquierdo</th>
+                                <th id="comp-right-title" class="py-3.5 px-4 w-3/8 text-cyan-300">Lado Derecho</th>
+                                <th class="py-3.5 px-4 text-center">Concordancia</th>
+                            </tr>
+                        </thead>
+                        <tbody id="comp-table-body" class="divide-y divide-slate-800/80 font-mono-numbers text-xs">
+                            <!-- Filas comparativas dinámicas -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- PIE INSTITUCIONAL -->
+    <footer class="bg-slate-900/90 border-t border-slate-800 py-3 mt-8">
+        <div class="max-w-7xl mx-auto px-4 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
+            <span class="font-mono-numbers">Hospital Central San Rafael • Sistema Clínico de Apoyo al Diagnóstico (CDSS)</span>
+            <span>Indexado con CIE-11 (OMS) y SNOMED-CT</span>
+        </div>
+    </footer>
+
+    <!-- Scripts de la Aplicación -->
+    <script src="js/data.js"></script>
+    <script src="js/diseases-db.js"></script>
+    <script src="js/diagnostics.js"></script>
+</body>
+</html>
