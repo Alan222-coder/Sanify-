@@ -1,8 +1,8 @@
 {
-  "name": "taskai",
-  "version": "1.0.0",
+  "name": "sanify",
+  "version": "3.0.0",
   "private": true,
-  "description": "Asistente de tareas con calendario, puntuación, autenticación y voz.",
+  "description": "Plataforma de vigilancia clínica, monitoreo asistencial y soporte a la decisión humana con datos sintéticos.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

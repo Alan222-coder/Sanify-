@@ -3,130 +3,1591 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TaskAI — Asistente de tareas</title>
-  <link rel="stylesheet" href="/style.css">
+  <title>Sanify — Plataforma de Inteligencia Clínica y Monitoreo Asistencial</title>
+  <meta name="description" content="Sanify: Plataforma profesional de monitoreo hospitalario, detección de alertas clínicas priorizadas, telemetría e investigación epidemiológica.">
+  <link rel="stylesheet" href="/style.css?v=3.0.0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+  <!-- jsPDF & AutoTable para Generación y Descarga de Informes Clínicos en PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
-<div id="authView" class="auth-page">
-  <div class="auth-brand">
-    <div class="logo">✓</div>
-    <h1>Task<span>AI</span></h1>
-    <p>Tu asistente de tareas, siempre contigo.</p>
-    <div class="auth-points">
-      <div>✓ Organiza tu día</div><div>✓ Mejora tu productividad</div><div>✓ Alcanza tus objetivos</div>
+
+<!-- Región viva para lectores de pantalla -->
+<div id="srLiveAnnouncer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+<!-- ==========================================================================
+     Pantalla de Introducción y Sincronización Refinada (Splash Screen)
+     ========================================================================== -->
+<div id="splashScreen" class="splash-screen" role="dialog" aria-modal="true" aria-label="Carga del sistema de monitoreo">
+  <div class="splash-content">
+    <div class="splash-brand">
+      <div class="splash-logo" aria-hidden="true">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+        </svg>
+      </div>
+      <div>
+        <div class="splash-title">Sanify</div>
+        <div class="splash-subtitle">Inteligencia Clínica y Monitoreo Asistencial</div>
+      </div>
     </div>
-  </div>
-  <div class="auth-card">
-    <div id="loginForm">
-      <h2>Iniciar sesión</h2><p class="muted">Ingresa a tu cuenta para continuar.</p>
-      <input id="loginEmail" type="email" placeholder="Email">
-      <input id="loginPassword" type="password" placeholder="Contraseña">
-      <button class="primary" onclick="login()">Iniciar sesión</button>
-      <p class="switch">¿No tienes una cuenta? <button onclick="showRegister()">Regístrate</button></p>
-    </div>
-    <div id="registerForm" hidden>
-      <h2>Crear cuenta</h2><p class="muted">Completa los datos para comenzar.</p>
-      <input id="regName" placeholder="Nombre completo">
-      <input id="regEmail" type="email" placeholder="Email">
-      <input id="regPassword" type="password" placeholder="Contraseña (mín. 6 caracteres)">
-      <button class="primary" onclick="register()">Registrarme</button>
-      <p class="switch">¿Ya tienes una cuenta? <button onclick="showLogin()">Iniciar sesión</button></p>
-    </div>
-    <p id="authError" class="error"></p>
+
+    <!-- Trazado de Onda ECG SVG animado -->
+    <svg class="ecg-svg" viewBox="0 0 300 60" fill="none" aria-hidden="true">
+      <path class="ecg-path" d="M0 30 L50 30 L65 30 L75 10 L85 50 L95 20 L105 38 L115 30 L160 30 L175 30 L185 8 L195 52 L205 18 L215 36 L225 30 L300 30" stroke="#14b8a6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+
+    <div id="splashStatus" class="splash-status">Preparando entorno de monitoreo y sincronización de sala...</div>
+    <button id="skipSplashBtn" class="splash-skip-btn" onclick="skipSplash()">Acceder directamente →</button>
   </div>
 </div>
 
-<div id="appView" hidden>
-  <aside class="sidebar">
-    <div class="brand"><div class="logo small">✓</div><strong>Task<span>AI</span></strong></div>
-    <nav>
-      <button class="nav active" data-page="home">⌂ <span>Inicio</span></button>
-      <button class="nav" data-page="tasks">▣ <span>Tareas</span></button>
-      <button class="nav" data-page="assistant">◉ <span>Asistente IA</span></button>
-      <button class="nav" data-page="calendar">□ <span>Calendario</span></button>
-      <button class="nav" data-page="files">▤ <span>Archivos</span></button>
-      <button class="nav" data-page="score">★ <span>Puntuación</span></button>
-      <button class="nav" data-page="customize">⚙ <span>Personalización</span></button>
-      <button class="nav" data-page="profile">♙ <span>Perfil</span></button>
+<!-- ==========================================================================
+     Vista de Autenticación y Acceso Seguro
+     ========================================================================== -->
+<div id="authView" class="auth-page">
+  <div class="auth-hero">
+    <div class="auth-hero-header">
+      <div class="brand-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      </div>
+      <span style="font-family: var(--font-display); font-weight: 700; font-size: 18px;">Sanify</span>
+    </div>
+
+    <div class="auth-hero-main">
+      <p class="eyebrow" style="color: var(--teal-400);">SEGURIDAD Y GOBERNANZA SANITARIA</p>
+      <h1>Plataforma de vigilancia clínica y soporte al monitoreo</h1>
+      <p>Diseñada para centralizar telemetría de internación, alertar oportunamente sobre riesgos potenciales y explorar patrones clínicos en cohortes de investigación.</p>
+
+      <div class="auth-safety-box">
+        <h4>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Soporte a la decisión humana — No diagnóstico autónomo
+        </h4>
+        <p>Las alertas e índices mostrados en este sistema representan estimaciones asistenciales que requieren obligatoriamente evaluación y confirmación por personal facultativo habilitado.</p>
+      </div>
+    </div>
+
+    <div style="font-size: 11px; color: var(--text-dim);">
+      Sanify Clinical Core v3.0 · Datos sintéticos demostrativos · Cumplimiento de trazabilidad clínica
+    </div>
+  </div>
+
+  <div class="auth-form-container">
+    <div class="auth-card">
+      <div id="loginFormSection">
+        <h2>Acceso Institucional</h2>
+        <p class="subtitle">Ingrese con sus credenciales médicas o seleccione un rol demostrativo.</p>
+
+        <form id="loginForm" onsubmit="handleLogin(event)">
+          <div class="form-group">
+            <label class="form-label" for="loginEmail">Correo Institucional</label>
+            <input id="loginEmail" class="form-input" type="email" placeholder="usuario@sanify.org" value="elena.morales@sanify.org" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="loginPassword">Contraseña</label>
+            <input id="loginPassword" class="form-input" type="password" value="clinica123" required>
+          </div>
+          <button type="submit" class="btn-primary" id="loginBtn">Iniciar Sesión Clínica</button>
+        </form>
+
+        <div class="demo-roles-picker">
+          <p>Accesos Demostrativos Directos (RBAC):</p>
+          <div class="demo-role-badges">
+            <button type="button" class="demo-role-btn" onclick="quickLogin('elena.morales@sanify.org', 'clinica123')">
+              <b>Dra. Morales</b>
+              <small>Médico Clínico (Asistencial)</small>
+            </button>
+            <button type="button" class="demo-role-btn" onclick="quickLogin('javier.roca@sanify.org', 'clinica123')">
+              <b>Dr. Roca</b>
+              <small>Coordinador de Guardia</small>
+            </button>
+            <button type="button" class="demo-role-btn" onclick="quickLogin('beatriz.santos@sanify.org', 'clinica123')">
+              <b>Dra. Santos</b>
+              <small>Investigadora Clínica</small>
+            </button>
+            <button type="button" class="demo-role-btn" onclick="quickLogin('admin@sanify.org', 'clinica123')">
+              <b>Lic. Vega</b>
+              <small>Administrador del Sistema</small>
+            </button>
+          </div>
+        </div>
+
+        <p id="authErrorMsg" class="alert-error" style="color: var(--critical-text); font-size: 13px; margin-top: 12px; display: none;"></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     Aplicación Principal (Sanify Workspace)
+     ========================================================================== -->
+<div id="appView" class="app-layout" style="display: none;">
+  <!-- Barra Lateral de Navegación -->
+  <aside class="sidebar" aria-label="Navegación Principal">
+    <div class="sidebar-header">
+      <div class="brand-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      </div>
+      <div class="brand-info">
+        <h2>Sanify</h2>
+        <span>Vigilancia Clínica</span>
+      </div>
+    </div>
+
+    <!-- Indicador de Entorno de Demostración con Datos Sintéticos -->
+    <div class="demo-environment-pill">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0; margin-top: 1px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+      <div>
+        <strong>Entorno demostrativo</strong><br>
+        Datos y telemetría sintética.
+      </div>
+    </div>
+
+    <!-- Navegación Sanitaria Estructurada -->
+    <nav class="sidebar-nav">
+      <button class="nav-link active" data-page="control" onclick="switchPage('control')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        <span>Centro de Control</span>
+      </button>
+
+      <button class="nav-link" data-page="ward" onclick="switchPage('ward')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M2 4v16"/><path d="M2 8h18a2 2 0 0 1 2 2v10"/><path d="M2 17h20"/><path d="M6 8v9"/></svg>
+        <span>Unidad de Monitoreo</span>
+      </button>
+
+      <button class="nav-link" data-page="intelligence" onclick="switchPage('intelligence')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/><path d="M8 12h8"/></svg>
+        <span>Inteligencia Clínica</span>
+      </button>
+
+      <button class="nav-link" data-page="alerts" onclick="switchPage('alerts')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span>Alertas y Seguimiento</span>
+        <span id="sidebarAlertsBadge" class="nav-badge critical">4</span>
+      </button>
+
+      <button class="nav-link" data-page="network" onclick="switchPage('network')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="5" r="3"/><circle cx="6" cy="19" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        <span>Centros y Red</span>
+      </button>
+
+      <button class="nav-link" data-page="admin" onclick="switchPage('admin')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span>Administración</span>
+      </button>
     </nav>
-    <button class="logout" onclick="logout()">↪ Cerrar sesión</button>
+
+    <!-- Pie de Barra Lateral con Usuario Activo -->
+    <div class="sidebar-footer">
+      <div class="user-profile-badge">
+        <div id="userAvatarInitials" class="user-avatar">EM</div>
+        <div class="user-details">
+          <div id="topUserName" class="user-name">Dra. Elena Morales</div>
+          <div id="topUserRole" class="user-role-tag">Médico Clínico</div>
+        </div>
+      </div>
+      <button class="btn-logout" onclick="logoutSession()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Cerrar Sesión Segura
+      </button>
+    </div>
   </aside>
 
-  <main class="main">
-    <header class="topbar">
-      <input id="globalSearch" placeholder="Buscar tareas, archivos, etc.">
-      <div class="user-chip" onclick="openPage('profile')"><span id="avatar">AN</span><span id="topName">Usuario</span></div>
+  <!-- Contenedor Principal de Vistas -->
+  <main class="main-wrapper">
+    <!-- Barra Superior de Estado y Controles Rápidos -->
+    <header class="top-header">
+      <div class="header-left">
+        <div class="ward-selector-chip">
+          <span class="ward-status-dot" aria-hidden="true"></span>
+          <span>Hospital Central San Rafael — <b>Ala Este (Internación)</b></span>
+        </div>
+        <span class="header-notice-pill">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Soporte asistencial no autónomo
+        </span>
+      </div>
+
+      <div class="header-actions">
+        <!-- Selector Rápido de Rol RBAC para Pruebas -->
+        <label for="rbacQuickSwitch" class="sr-only">Cambiar Rol Activo</label>
+        <select id="rbacQuickSwitch" class="role-switcher-select" onchange="changeActiveRole(this.value)" title="Simular permisos por rol">
+          <option value="clinico">Rol: Clínico Asistencial</option>
+          <option value="coordinador">Rol: Coordinador de Guardia</option>
+          <option value="investigador">Rol: Investigador Clínico</option>
+          <option value="admin">Rol: Administrador</option>
+        </select>
+
+        <!-- Accesibilidad: Tema Claro / Nocturno -->
+        <button class="btn-icon" onclick="toggleTheme()" title="Alternar Modo Claro / Nocturno Suave" aria-label="Alternar Modo Claro / Nocturno">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        </button>
+
+        <!-- Accesibilidad: Alto Contraste -->
+        <button class="btn-icon" onclick="toggleHighContrast()" title="Modo Alto Contraste Asistencial" aria-label="Modo Alto Contraste">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2v20a10 10 0 0 0 0-20z"/></svg>
+        </button>
+
+        <!-- Pausar/Reanudar simulación de telemetría en vivo -->
+        <button id="telemetryToggleBtn" class="btn-table-action" onclick="toggleLiveSimulation()" title="Alternar actualización automática de telemetría">
+          ● Telemetría en Vivo
+        </button>
+      </div>
     </header>
 
-    <section id="home" class="page active-page">
-      <div class="welcome"><div><p class="eyebrow">PANEL PRINCIPAL</p><h1>¡Hola, <span id="helloName">Usuario</span>!</h1><p class="muted">Hoy es un gran día para avanzar.</p></div><button class="primary" onclick="openTaskModal()">+ Nueva tarea</button></div>
-      <div class="dashboard-grid">
-        <div class="card calendar-card">
-          <div class="card-head"><h3>Calendario</h3><button onclick="openPage('calendar')">Ver completo →</button></div>
-          <div id="miniCalendar"></div>
+    <div class="content-area">
+
+      <!-- ====================================================================
+           1. CENTRO DE CONTROL
+           ==================================================================== -->
+      <section id="page-control" class="page-view active" aria-labelledby="heading-control">
+        <div class="page-header">
+          <div class="page-header-text">
+            <p class="eyebrow">RESUMEN OPERATIVO Y SEGURIDAD CLÍNICA</p>
+            <h1 id="heading-control">Centro de Control</h1>
+            <p>Visión consolidada de ocupación, camas que requieren evaluación y alertas prioritarias de la guardia.</p>
+          </div>
+          <div>
+            <span class="badge-review revisado" id="shiftTimestamp">Turno Tarde-Noche · Sincronizado</span>
+          </div>
         </div>
-        <div class="card quick">
-          <h3>Acciones rápidas</h3>
-          <button onclick="openTaskModal()">▣ <span><b>Nueva tarea</b><small>Crear una tarea</small></span></button>
-          <button onclick="openPage('assistant')">◉ <span><b>Asistente IA</b><small>Escribe o habla con la IA</small></span></button>
-          <button onclick="openPage('files')">↥ <span><b>Subir archivo</b><small>Desde tu dispositivo</small></span></button>
+
+        <!-- Fila de Tarjetas Métricas Operativas -->
+        <div class="metrics-row">
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-label">Ocupación Total</span>
+              <div class="metric-icon info">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              </div>
+            </div>
+            <div class="metric-value-row">
+              <span id="metricOccupancyTotal" class="metric-number">28</span>
+              <span class="metric-sub">/ 28 Camas (100%)</span>
+            </div>
+            <div class="metric-footer">Capacidad completa · 4 sectores en monitoreo</div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-label">Prioridad Alta (Crítica)</span>
+              <div class="metric-icon critical">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              </div>
+            </div>
+            <div class="metric-value-row">
+              <span id="metricCriticalCount" class="metric-number" style="color: var(--critical-text);">5</span>
+              <span class="metric-sub">Pacientes</span>
+            </div>
+            <div class="metric-footer">Soporte ventilatorio / inestabilidad potencial</div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-label">Requieren Revisión</span>
+              <div class="metric-icon warning">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+              </div>
+            </div>
+            <div class="metric-value-row">
+              <span id="metricReviewCount" class="metric-number" style="color: var(--warning-text);">9</span>
+              <span class="metric-sub">Pendientes de ronda</span>
+            </div>
+            <div class="metric-footer">Variaciones hemodinámicas intermedias</div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-label">Condición Estable</span>
+              <div class="metric-icon stable">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+            </div>
+            <div class="metric-value-row">
+              <span id="metricStableCount" class="metric-number" style="color: var(--stable-text);">14</span>
+              <span class="metric-sub">Evolución favorable</span>
+            </div>
+            <div class="metric-footer">Parámetros dentro de metas clínicas</div>
+          </div>
         </div>
-        <div class="card progress-card">
-          <h3>Tu progreso</h3>
-          <div class="progress-ring"><strong id="homeProgress">0%</strong></div>
-          <p><b id="completedCount">0</b> completadas · <b id="pendingCount">0</b> pendientes</p>
+
+        <!-- Grilla de Tableros Principales -->
+        <div class="dashboard-columns">
+          <!-- Columna Izquierda: Roster de Pacientes Prioritarios para Evaluación -->
+          <div class="panel-card">
+            <div class="panel-head">
+              <div class="panel-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                Pacientes Prioritarios para Evaluación Médica Inmediata
+              </div>
+              <button class="btn-table-action" onclick="switchPage('ward')">Ver Sala Completa →</button>
+            </div>
+            <div class="panel-body" style="padding: 0;">
+              <table class="triage-table">
+                <thead>
+                  <tr>
+                    <th>Cama / ID</th>
+                    <th>Sector</th>
+                    <th>Condición Sintética</th>
+                    <th>Señales Clave</th>
+                    <th>Prioridad</th>
+                    <th>Acción</th>
+                  </tr>
+                </thead>
+                <tbody id="controlTriageTableBody">
+                  <!-- Inyectado dinámicamente -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Columna Derecha: Ocupación por Sector y Resumen de Señales -->
+          <div>
+            <div class="panel-card">
+              <div class="panel-head">
+                <div class="panel-title">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+                  Distribución por Sector Hospitalario
+                </div>
+              </div>
+              <div class="panel-body">
+                <div id="wardSectorsSummaryList" style="display: flex; flex-direction: column; gap: 12px;">
+                  <!-- Inyectado dinámicamente -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Tarjeta de Alerta de Protocolo y Supervisión Humana -->
+            <div class="panel-card" style="border-left: 4px solid var(--teal-700);">
+              <div class="panel-body">
+                <h4 style="font-size: 13.5px; font-weight: 700; color: var(--text-main); margin-bottom: 6px;">
+                  Protocolo Institucional de Triage y Vigilancia
+                </h4>
+                <p style="font-size: 12px; color: var(--text-muted); line-height: 1.5;">
+                  Toda variación de puntaje sintético NEWS2 superior a 5 puntos requiere verificación presencial por enfermería y valoración por médico de guardia en un plazo no mayor a 30 minutos.
+                </p>
+                <div style="margin-top: 10px; font-size: 11px; color: var(--teal-700); font-weight: 600;">
+                  ✓ Trazabilidad en bitácora habilitada para todas las intervenciones
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="card upcoming"><div class="card-head"><h3>Próximas tareas</h3><button onclick="openPage('tasks')">Ver todas</button></div><div id="upcomingList"></div></div>
-      </div>
-    </section>
+      </section>
 
-    <section id="tasks" class="page">
-      <div class="page-title"><div><p class="eyebrow">PRODUCTIVIDAD</p><h1>Mis tareas</h1></div><button class="primary" onclick="openTaskModal()">+ Nueva tarea</button></div>
-      <div class="tabs"><button class="tab active" data-filter="all">Todas</button><button class="tab" data-filter="pending">Pendientes</button><button class="tab" data-filter="in_progress">En progreso</button><button class="tab" data-filter="completed">Completadas</button></div>
-      <div id="taskList" class="task-list"></div>
-    </section>
+      <!-- ====================================================================
+           2. UNIDAD DE MONITOREO / PLANO CAD INTERACTIVO DE SALA DE INTERNACIÓN
+           ==================================================================== -->
+      <section id="page-ward" class="page-view" aria-labelledby="heading-ward" style="padding: 0; flex-direction: column; height: calc(100vh - 65px); overflow: hidden;">
+        
+        <!-- Header HUD Superior de la Sala -->
+        <div class="ward-hud-header">
+          <div class="ward-hud-left">
+            <span class="hud-status-dot"></span>
+            <div>
+              <h1 id="heading-ward" class="ward-hud-title">SEC-B // PISO 02 : ZONA DE INTERNACIÓN Y MONITOREO</h1>
+              <span class="ward-hud-subtitle">CAD-VIEW 2.4 · HOSPITAL CENTRAL · MAPA INTERACTIVO</span>
+            </div>
+          </div>
 
-    <section id="assistant" class="page">
-      <div class="page-title"><div><p class="eyebrow">TU COPILOTO</p><h1>Asistente IA</h1><p class="muted">Escribe, habla o consulta tus tareas.</p></div></div>
-      <div class="assistant-grid card">
-        <div class="chat">
-          <div id="messages" class="messages"><div class="message ai">¡Hola! Soy tu asistente TaskAI. Pregúntame lo que necesites.</div></div>
-          <div class="chat-input"><textarea id="chatInput" placeholder="Escribe tu mensaje..."></textarea><button id="voiceBtn" title="Hablar">🎙</button><button class="primary send" onclick="sendMessage()">➤</button></div>
-          <small class="muted">El botón de micrófono usa el reconocimiento de voz del navegador cuando está disponible.</small>
+          <!-- Métricas en Tiempo Real de la Sala -->
+          <div class="ward-hud-metrics">
+            <div class="hud-chip">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M2 4v16"/><path d="M2 8h18a2 2 0 0 1 2 2v10"/><path d="M2 17h20"/><path d="M6 8v9"/></svg>
+              <span>CAMAS:</span>
+              <strong id="stat-occupied" class="text-white">11</strong>
+              <span style="opacity: 0.5;">/</span>
+              <span id="stat-total" class="text-dim">16</span>
+            </div>
+
+            <div id="stat-alarms-badge" class="hud-chip alert-clean">
+              <span id="stat-alarms-dot" class="dot-status normal"></span>
+              <span>ALERTAS:</span>
+              <strong id="stat-alarms-count">0 CRÍTICAS</strong>
+            </div>
+
+            <div class="hud-chip hide-mobile">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              <span>GUARDIA: <strong>4 ENF / 2 MED</strong></span>
+            </div>
+
+            <div class="hud-chip">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <strong id="game-clock">14:32:00</strong>
+            </div>
+          </div>
         </div>
-        <div class="voice-box"><div class="mic">🎙</div><h3>Habla ahora</h3><p id="voiceStatus">Pulsa el micrófono para empezar.</p></div>
-      </div>
-    </section>
 
-    <section id="calendar" class="page">
-      <div class="page-title"><div><p class="eyebrow">ORGANIZACIÓN</p><h1>Calendario</h1></div><button class="primary" onclick="openEventModal()">+ Nuevo evento</button></div>
-      <div class="card calendar-full"><div class="calendar-nav"><button onclick="changeMonth(-1)">‹</button><h2 id="calendarTitle"></h2><button onclick="changeMonth(1)">›</button><button onclick="goToday()">Hoy</button></div><div id="fullCalendar"></div></div>
-    </section>
+        <!-- Banner de Modo Alarma Activo (Visible en Crisis) -->
+        <div id="alarm-banner" class="alarm-banner hidden">
+          <div class="alarm-banner-content">
+            <span class="alarm-ping-dot"></span>
+            <span class="alarm-tag">⚠ CÓDIGO CLÍNICO ACTIVO:</span>
+            <span id="alarm-banner-text" class="alarm-text">Deterioro agudo detectado. Se requiere intervención del equipo asistencial.</span>
+          </div>
+          <button onclick="resolveAllAlarms()" class="btn-alarm-action">
+            ESTABILIZAR TODOS
+          </button>
+        </div>
 
-    <section id="files" class="page">
-      <div class="page-title"><div><p class="eyebrow">DOCUMENTOS</p><h1>Archivos</h1><p class="muted">Esta base guarda la interfaz; para almacenamiento real puedes conectar S3, Cloudinary o almacenamiento local.</p></div></div>
-      <div class="card upload"><input id="fileInput" type="file" multiple><label for="fileInput">↥<b>Selecciona archivos</b><small>PDF, imágenes, documentos, etc.</small></label><div id="fileNames"></div></div>
-    </section>
+        <!-- Sub-Barra de Herramientas, Filtros y Modo Alarma -->
+        <div class="ward-subtoolbar">
+          <!-- Filtros de Estado -->
+          <div class="ward-filter-group">
+            <span class="filter-label hide-mobile">FILTRO:</span>
+            <button onclick="setFilter('all')" id="filter-all" class="btn-cad-filter active">TODAS (16)</button>
+            <button onclick="setFilter('occupied')" id="filter-occupied" class="btn-cad-filter">OCUPADAS (<span id="count-occupied">11</span>)</button>
+            <button onclick="setFilter('free')" id="filter-free" class="btn-cad-filter">DISPONIBLES (<span id="count-free">5</span>)</button>
+            <button onclick="setFilter('alarm')" id="filter-alarm" class="btn-cad-filter filter-alarm">EN ALERTA (<span id="count-alarm">0</span>)</button>
+          </div>
 
-    <section id="score" class="page">
-      <div class="page-title"><div><p class="eyebrow">RENDIMIENTO</p><h1>Tu puntuación</h1></div></div>
-      <div class="score-hero card"><div class="big-score" id="bigScore">0</div><h2 id="scoreLevel">Empezando</h2><p class="muted">Completa tareas para aumentar tu puntuación.</p></div>
-      <div class="stats-grid"><div class="card stat"><b id="statCompleted">0</b><span>Tareas completadas</span></div><div class="card stat"><b id="statPoints">0</b><span>Puntos obtenidos</span></div><div class="card stat"><b id="statAverage">0%</b><span>Progreso promedio</span></div></div>
-    </section>
+          <!-- Controles de Modo Alarma y Navegación de Plano -->
+          <div class="ward-nav-controls">
+            <!-- Botón de Modo Alarma / Simulación de Crisis -->
+            <button id="btn-toggle-alarm-mode" onclick="toggleGlobalAlarmMode()" class="btn-alarm-toggle" title="Alternar simulación de crisis asistencial">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 18h12"/><path d="M12 2v4"/><path d="M4.93 4.93l2.83 2.83"/><path d="M19.07 4.93l-2.83 2.83"/><path d="M12 18a6 6 0 0 0 6-6V9a6 6 0 0 0-12 0v3a6 6 0 0 0 6 6z"/></svg>
+              <span id="btn-alarm-text">SIMULAR MODO ALARMA</span>
+            </button>
 
-    <section id="customize" class="page">
-      <div class="page-title"><div><p class="eyebrow">EXPERIENCIA</p><h1>Personalización</h1></div></div>
-      <div class="card settings"><h3>Tema</h3><div class="theme-options"><button onclick="setTheme('light')">☀ Claro</button><button onclick="setTheme('dark')">☾ Oscuro</button><button onclick="setTheme('auto')">◐ Automático</button></div><h3>Preferencias</h3><label class="setting-row">Notificaciones <input type="checkbox" checked></label><label class="setting-row">Sonidos <input type="checkbox" checked></label></div>
-    </section>
+            <!-- Zoom & Pan -->
+            <div class="zoom-controls-wrapper">
+              <button onclick="zoomMap(-0.15)" title="Alejar (-)" class="btn-zoom">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              </button>
+              <span id="zoom-label" class="zoom-readout">95%</span>
+              <button onclick="zoomMap(0.15)" title="Acercar (+)" class="btn-zoom">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              </button>
+              <button onclick="resetZoomPan()" title="Centrar Plano" class="btn-zoom-reset">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg>
+                <span class="hide-mobile">CENTRAR</span>
+              </button>
+            </div>
+          </div>
+        </div>
 
-    <section id="profile" class="page">
-      <div class="page-title"><div><p class="eyebrow">CUENTA</p><h1>Mi perfil</h1></div></div>
-      <div class="card profile-card"><div class="profile-avatar" id="profileAvatar">AN</div><div><h2 id="profileName">Usuario</h2><p id="profileEmail" class="muted"></p></div><button class="secondary" onclick="editProfile()">Editar perfil</button></div>
-    </section>
+        <!-- Área del Plano CAD (Viewport Interactivo con Pan & Zoom) -->
+        <div id="viewport-container" class="blueprint-viewport blueprint-grid" style="touch-action: none; user-select: none;">
+          
+          <div id="blueprint-canvas" class="blueprint-canvas" style="transform-origin: 0 0; transform: translate(0px, 0px) scale(0.95);">
+            <!-- Placa Arquitectónica CAD -->
+            <div class="cad-floor-plate">
+              <!-- Marcadores técnicos en esquinas (Estilo Blueprint CAD) -->
+              <div class="cad-corner corner-tl"></div>
+              <div class="cad-corner corner-tr"></div>
+              <div class="cad-corner corner-bl"></div>
+              <div class="cad-corner corner-br"></div>
+
+              <!-- Anotaciones de plano técnico -->
+              <div class="cad-blueprint-meta-top-left">
+                ESTRUCTURA HOSPITALARIA // MODULO B-04 // CAPACIDAD 16 CAMAS // ESCALA 1:100
+              </div>
+              <div class="cad-blueprint-meta-top-right">
+                PLANTA GENERAL N.2 · ALA OESTE/ESTE
+              </div>
+
+              <!-- Distribución Arquitectónica Perimetral -->
+              <div class="cad-layout-shell">
+                <!-- HILERA NORTE: Habitaciones 101 a 105 -->
+                <div class="cad-row-north">
+                  <div id="room-101" onclick="handleRoomClick('101')" onmouseenter="showTooltip(event, '101')" onmouseleave="hideTooltip()" class="room-box"></div>
+                  <div id="room-102" onclick="handleRoomClick('102')" onmouseenter="showTooltip(event, '102')" onmouseleave="hideTooltip()" class="room-box"></div>
+                  <div id="room-103" onclick="handleRoomClick('103')" onmouseenter="showTooltip(event, '103')" onmouseleave="hideTooltip()" class="room-box"></div>
+                  <div id="room-104" onclick="handleRoomClick('104')" onmouseenter="showTooltip(event, '104')" onmouseleave="hideTooltip()" class="room-box"></div>
+                  <div id="room-105" onclick="handleRoomClick('105')" onmouseenter="showTooltip(event, '105')" onmouseleave="hideTooltip()" class="room-box"></div>
+                </div>
+
+                <!-- SECCIÓN CENTRAL: Ala Oeste + Estación Central + Ala Este -->
+                <div class="cad-row-middle">
+                  <!-- ALA OESTE: Habitaciones 106, 107, 108 -->
+                  <div class="cad-wing-west">
+                    <div id="room-106" onclick="handleRoomClick('106')" onmouseenter="showTooltip(event, '106')" onmouseleave="hideTooltip()" class="room-box"></div>
+                    <div id="room-107" onclick="handleRoomClick('107')" onmouseenter="showTooltip(event, '107')" onmouseleave="hideTooltip()" class="room-box"></div>
+                    <div id="room-108" onclick="handleRoomClick('108')" onmouseenter="showTooltip(event, '108')" onmouseleave="hideTooltip()" class="room-box"></div>
+                  </div>
+
+                  <!-- NÚCLEO CENTRAL: ENFERMERÍA Y TELEMETRÍA -->
+                  <div class="cad-core-center">
+                    <div onclick="handleStationClick()" onmouseenter="showStationTooltip(event)" onmouseleave="hideTooltip()" class="cad-station-island" role="button" tabindex="0" title="Ver puesto central de guardia y farmacia">
+                      <div class="cad-station-header">
+                        <div class="cad-station-title">
+                          <span class="cad-square-dot"></span>
+                          <span>ESTACIÓN CENTRAL // ENFERMERÍA & MONITOREO</span>
+                        </div>
+                        <span class="cad-tag-chip">HUB OPERATIVO</span>
+                      </div>
+
+                      <div class="cad-station-body">
+                        <!-- Isla circular esquemática -->
+                        <div class="cad-monitoring-ring">
+                          <span class="ring-title">ISLA DE MONITOREO</span>
+                          <span class="ring-sub">4 TERMINALES ACTIVAS</span>
+
+                          <div class="term-slot term-top">TERM 1</div>
+                          <div class="term-slot term-bottom">TERM 2</div>
+                          <div class="term-slot term-left"></div>
+                          <div class="term-slot term-right"></div>
+                        </div>
+
+                        <!-- Farmacia rápida y Archivo clínico -->
+                        <div class="cad-storage-box storage-left">
+                          <span>FARMACIA RÁPIDA</span>
+                        </div>
+                        <div class="cad-storage-box storage-right">
+                          <span>ARCHIVO CLÍNICO</span>
+                        </div>
+                      </div>
+
+                      <div class="cad-station-footer">
+                        <span>CLIC PARA VER DETALLES DE GUARDIA</span>
+                        <span>ACCESO PASILLO 360°</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- ALA ESTE: Habitaciones 109, 110, 111 -->
+                  <div class="cad-wing-east">
+                    <div id="room-109" onclick="handleRoomClick('109')" onmouseenter="showTooltip(event, '109')" onmouseleave="hideTooltip()" class="room-box"></div>
+                    <div id="room-110" onclick="handleRoomClick('110')" onmouseenter="showTooltip(event, '110')" onmouseleave="hideTooltip()" class="room-box"></div>
+                    <div id="room-111" onclick="handleRoomClick('111')" onmouseenter="showTooltip(event, '111')" onmouseleave="hideTooltip()" class="room-box"></div>
+                  </div>
+                </div>
+
+                <!-- HILERA SUR: Habitaciones 112 a 116 -->
+                <div class="cad-row-south">
+                  <div id="room-112" onclick="handleRoomClick('112')" onmouseenter="showTooltip(event, '112')" onmouseleave="hideTooltip()" class="room-box"></div>
+                  <div id="room-113" onclick="handleRoomClick('113')" onmouseenter="showTooltip(event, '113')" onmouseleave="hideTooltip()" class="room-box"></div>
+                  <div id="room-114" onclick="handleRoomClick('114')" onmouseenter="showTooltip(event, '114')" onmouseleave="hideTooltip()" class="room-box"></div>
+                  <div id="room-115" onclick="handleRoomClick('115')" onmouseenter="showTooltip(event, '115')" onmouseleave="hideTooltip()" class="room-box"></div>
+                  <div id="room-116" onclick="handleRoomClick('116')" onmouseenter="showTooltip(event, '116')" onmouseleave="hideTooltip()" class="room-box"></div>
+                </div>
+              </div>
+
+              <!-- Marcador de acceso al piso -->
+              <div class="cad-floor-entrance">
+                ▲ ACCESO PRINCIPAL AL PISO Y ASCENSORES DE SERVICIO
+              </div>
+            </div>
+          </div>
+
+          <!-- Guía flotante de interacción en esquina inferior -->
+          <div class="cad-interaction-hint hide-mobile">
+            <span>🖱 Ratón: Arrastrar para mover • Rueda para zoom • Pasa el mouse para resumen rápido • Clic para ficha técnica</span>
+          </div>
+        </div>
+
+        <!-- Drawer Lateral HUD de Detalle de Habitación / Paciente -->
+        <aside id="side-hud" class="cad-side-hud">
+          <!-- Header del HUD -->
+          <div class="side-hud-header">
+            <div class="side-hud-title-group">
+              <span id="hud-indicator-dot" class="hud-status-circle"></span>
+              <span id="hud-room-title" class="side-hud-title">HABITACIÓN 101</span>
+            </div>
+            <button onclick="closeSideHud()" class="btn-hud-close" title="Cerrar panel">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+
+          <!-- Contenido del HUD (Scrollable) -->
+          <div class="side-hud-body">
+            <!-- Estado de la cama -->
+            <div id="hud-status-banner" class="hud-box flex-between">
+              <span class="hud-label">ESTADO CLÍNICO</span>
+              <span id="hud-room-status" class="hud-tag-status">OCUPADA</span>
+            </div>
+
+            <!-- Alerta de Crisis Crítica si la habitación está en alarma -->
+            <div id="hud-alarm-alert-card" class="hud-crisis-card hidden">
+              <div class="crisis-card-header">
+                <span class="crisis-card-title">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                  CRISIS / DETERIORO DETECTADO
+                </span>
+                <span class="crisis-badge">CÓDIGO VITAL</span>
+              </div>
+              <p id="hud-alarm-motive" class="crisis-motive">
+                Desaturación aguda y taquicardia sostenida.
+              </p>
+              <button onclick="resolveCurrentRoomAlarm()" class="btn-crisis-resolve">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                APLICAR PROTOCOLO Y ESTABILIZAR
+              </button>
+            </div>
+
+            <!-- Ficha del Paciente (Visible si está ocupada) -->
+            <div id="hud-patient-section" class="hud-patient-section">
+              <div class="hud-box">
+                <div class="hud-section-eyebrow">FICHA DEL PACIENTE</div>
+                <div id="hud-patient-name" class="hud-patient-name">Elena Rostova</div>
+                <div id="hud-patient-meta" class="hud-patient-meta">42 años • ID: #MED-8492</div>
+                
+                <div class="hud-meta-grid">
+                  <div>
+                    <span class="hud-sublabel">DIAGNÓSTICO</span>
+                    <span id="hud-patient-diag" class="hud-subvalue">Post-operatorio Apendicitis</span>
+                  </div>
+                  <div>
+                    <span class="hud-sublabel">TIEMPO INTERNADO</span>
+                    <span id="hud-patient-time" class="hud-subvalue">36 horas</span>
+                  </div>
+                </div>
+
+                <div style="margin-top: 8px;">
+                  <span class="hud-sublabel">MÉDICO A CARGO</span>
+                  <span id="hud-patient-doctor" class="hud-subvalue">Dra. Elena Morales</span>
+                </div>
+              </div>
+
+              <!-- Telemetría & Signos Vitales Simulado -->
+              <div class="hud-box">
+                <div class="flex-between" style="margin-bottom: 8px;">
+                  <span class="hud-section-eyebrow">TELEMETRÍA EN VIVO</span>
+                  <span id="hud-signal-indicator" class="hud-signal-stable">
+                    <span class="signal-dot"></span> SEÑAL ESTABLE
+                  </span>
+                </div>
+
+                <div class="hud-vitals-grid">
+                  <div class="hud-vital-tile">
+                    <span class="vital-tile-lbl">RITMO (BPM)</span>
+                    <span id="hud-bpm" class="vital-tile-val">74</span>
+                  </div>
+                  <div class="hud-vital-tile">
+                    <span class="vital-tile-lbl">SpO2</span>
+                    <span id="hud-spo2" class="vital-tile-val">98%</span>
+                  </div>
+                  <div class="hud-vital-tile">
+                    <span class="vital-tile-lbl">PRESIÓN</span>
+                    <span id="hud-bp" class="vital-tile-val">120/80</span>
+                  </div>
+                  <div class="hud-vital-tile">
+                    <span class="vital-tile-lbl">TEMP</span>
+                    <span id="hud-temp" class="vital-tile-val">36.7°</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Esquema de Medicación Activa -->
+              <div class="hud-box">
+                <span class="hud-section-eyebrow" style="margin-bottom: 6px; display: block;">MEDICACIÓN EN CURSO</span>
+                <div id="hud-meds" class="hud-meds-list">
+                  <!-- Inyectado dinámicamente -->
+                </div>
+              </div>
+
+              <!-- Parámetros de la Habitación -->
+              <div class="hud-box">
+                <span class="hud-section-eyebrow" style="margin-bottom: 6px; display: block;">ENTORNO Y SOPORTE</span>
+                <div class="flex-between py-1" style="border-bottom: 1px solid var(--border-subtle);">
+                  <span style="color: var(--text-muted); font-size: 11px;">Climatización Cuarto:</span>
+                  <span id="hud-room-temp" style="font-family: var(--font-mono); font-weight: 600;">22.2 °C</span>
+                </div>
+                <div class="flex-between py-1" style="border-bottom: 1px solid var(--border-subtle);">
+                  <span style="color: var(--text-muted); font-size: 11px;">Higiene y Desinfección:</span>
+                  <span id="hud-room-hygiene" style="font-family: var(--font-mono); font-weight: 600; color: #16a34a;">98% Certificada</span>
+                </div>
+                <div class="flex-between py-1">
+                  <span style="color: var(--text-muted); font-size: 11px;">Llamador de Enfermería:</span>
+                  <span style="font-family: var(--font-mono); color: var(--text-main);">En reposo (Operativo)</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Sección si la cama está DISPONIBLE -->
+            <div id="hud-empty-section" class="hud-empty-section hidden">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto; color: var(--text-dim);"><path d="M2 4v16"/><path d="M2 8h18a2 2 0 0 1 2 2v10"/><path d="M2 17h20"/><path d="M6 8v9"/></svg>
+              <h4 style="font-weight: 700; margin-top: 8px;">Habitación Vacía</h4>
+              <p style="font-size: 12px; color: var(--text-muted); margin: 4px 0 14px;">Limpia, higienizada y lista para recibir a un nuevo paciente.</p>
+              <button onclick="admitRandomPatient()" class="btn-primary" style="width: 100%; font-family: var(--font-mono); font-size: 12px;">
+                + ASIGNAR PACIENTE INGRESANTE
+              </button>
+            </div>
+          </div>
+
+          <!-- Acciones Rápidas Inferiores -->
+          <div id="hud-actions" class="side-hud-footer">
+            <button onclick="openPatientFullHistoryModal(currentSelectedRoomId)" class="btn-primary" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-family: var(--font-mono); font-size: 11.5px; padding: 9px 12px; background: linear-gradient(135deg, var(--teal-600), var(--teal-700)); border: 1px solid var(--teal-500); margin-bottom: 6px; box-shadow: 0 2px 6px rgba(13, 148, 136, 0.25);">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+              VER HISTORIAL CLÍNICO Y ESTUDIOS
+            </button>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <button onclick="notifyAction('Enfermero despachado a la habitación')" class="btn-hud-action">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                LLAMAR ENF.
+              </button>
+              <button id="btn-trigger-single-alarm" onclick="triggerCurrentRoomAlarm()" class="btn-hud-action action-crisis">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                INDUCIR CRISIS
+              </button>
+            </div>
+            <button onclick="dischargePatient()" class="btn-hud-discharge">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              DAR DE ALTA MÉDICA
+            </button>
+          </div>
+        </aside>
+
+        <!-- Modal de Información de Estación Central -->
+        <div id="station-modal" class="cad-modal-backdrop hidden">
+          <div class="cad-modal-card">
+            <div class="cad-modal-header">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="width: 10px; height: 10px; background: var(--teal-600); border-radius: 2px;"></span>
+                <h3 style="font-weight: 700; font-size: 13.5px; margin: 0;">ESTACIÓN CENTRAL DE ENFERMERÍA</h3>
+              </div>
+              <button onclick="closeStationModal()" class="btn-icon" style="color: var(--text-dim);">✕</button>
+            </div>
+            
+            <div style="padding: 16px; font-size: 12px; color: var(--text-muted); display: flex; flex-direction: column; gap: 12px;">
+              <p>Núcleo de supervisión y gestión del Ala de Internación. Punto neurálgico para distribución de medicación, registro en fichas y monitoreo centralizado.</p>
+              
+              <div class="hud-box" style="background: var(--bg-app); border: 1px solid var(--border-subtle); padding: 10px; border-radius: var(--radius-sm);">
+                <div style="font-weight: 700; color: var(--text-main); margin-bottom: 6px;">PERSONAL EN TURNO ACTUAL:</div>
+                <div class="flex-between py-0.5"><span>• Dra. Mariana Silva</span> <span style="color: var(--text-dim);">Médica de Guardia</span></div>
+                <div class="flex-between py-0.5"><span>• Dr. Lucas Beltrán</span> <span style="color: var(--text-dim);">Clínico Asignado</span></div>
+                <div class="flex-between py-0.5"><span>• Enf. Carolina Gómez</span> <span style="color: var(--text-dim);">Jefa de Enfermería</span></div>
+                <div class="flex-between py-0.5"><span>• Enf. Martín Vega</span> <span style="color: var(--text-dim);">Asistencia Perimetral</span></div>
+              </div>
+
+              <div class="flex-between" style="border: 1px solid var(--border-subtle); padding: 8px 12px; border-radius: var(--radius-sm);">
+                <span>SUMINISTRO FARMACÉUTICO:</span>
+                <strong style="color: var(--teal-600);">94% ÓPTIMO</strong>
+              </div>
+              
+              <div class="flex-between" style="border: 1px solid var(--border-subtle); padding: 8px 12px; border-radius: var(--radius-sm);">
+                <span>RATIO ENFERMERO/CAMA:</span>
+                <strong style="color: var(--text-main);">1 : 4 (Dentro de norma)</strong>
+              </div>
+            </div>
+
+            <div style="padding: 12px 16px; border-top: 1px solid var(--border-subtle); background: var(--bg-app); text-align: right;">
+              <button onclick="closeStationModal()" class="btn-primary" style="width: 100%; font-size: 12px;">
+                CERRAR RESUMEN
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Toast de Notificación Discreta -->
+        <div id="toast" class="cad-toast">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          <span id="toast-text">Acción realizada</span>
+        </div>
+
+      </section>
+
+      <!-- ====================================================================
+           3. INTELIGENCIA CLÍNICA Y MÓDULO DE INVESTIGACIÓN EPIDEMIOLÓGICA
+           ==================================================================== -->
+      <section id="page-intelligence" class="page-view" aria-labelledby="heading-intelligence">
+        <div class="page-header" style="display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+          <div class="page-header-text">
+            <p class="eyebrow">UNIDAD DE INVESTIGACIÓN Y ANÁLISIS DE COHORTES</p>
+            <h1 id="heading-intelligence">Inteligencia Clínica e Investigación de Enfermedades</h1>
+            <p>Seleccione cualquier patología para explorar todos los casos diagnosticados (pacientes vivos y óbitos), detectar patrones algorítmicos de mortalidad y generar el informe en PDF.</p>
+          </div>
+          
+          <!-- Botones de Acción Global de Investigación -->
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button id="btnRunPatternAnalysis" onclick="executeCohortAnalysis()" class="btn-primary" style="display: flex; align-items: center; gap: 8px; padding: 10px 18px; font-size: 13px; background: linear-gradient(135deg, var(--teal-600), var(--teal-800)); box-shadow: 0 4px 12px rgba(13, 148, 136, 0.3);">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><path d="M11 8v6"/><path d="M8 11h6"/></svg>
+              Analizar Patrones y Coincidencias
+            </button>
+            <button onclick="previewOfficialReport()" class="btn-table-action" style="display: flex; align-items: center; gap: 6px; padding: 10px 14px; font-size: 13px;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+              Ver Informe Oficial
+            </button>
+            <button onclick="downloadOfficialReportPDF()" class="btn-primary" style="display: flex; align-items: center; gap: 6px; padding: 10px 16px; font-size: 13px; background: #0f172a; border: 1px solid #334155;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Descargar PDF
+            </button>
+          </div>
+        </div>
+
+        <!-- Selector de Sub-Módulo de Inteligencia Clínica -->
+        <div style="display: flex; gap: 10px; margin-bottom: 22px; border-bottom: 2px solid var(--border-subtle); padding-bottom: 12px;">
+          <button id="intTabBtnResearch" class="filter-chip-btn active" style="font-size: 13px; font-weight: 700; padding: 9px 18px; border-radius: var(--radius-sm);" onclick="switchIntelligenceTab('research')">
+            🔬 1. Investigación de Casos Clínicos (Vivos vs. Fallecidos & PDF)
+          </button>
+          <button id="intTabBtnCompare" class="filter-chip-btn" style="font-size: 13px; font-weight: 700; padding: 9px 18px; border-radius: var(--radius-sm);" onclick="switchIntelligenceTab('compare')">
+            ⚖️ 2. Comparador de Enfermedades (Parámetros Fisiológicos y Respuestas)
+          </button>
+        </div>
+
+        <div id="intPaneResearch">
+        <!-- Barra de Selección de Enfermedad a Investigar y Búsqueda -->
+        <div class="panel-card" style="padding: 16px 20px; margin-bottom: 20px; background: var(--bg-card); border: 1px solid var(--border-subtle);">
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
+            <div style="display: flex; align-items: center; gap: 12px; flex: 1; min-width: 280px;">
+              <label for="researchDiseaseSelect" style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;">
+                PATOLOGÍA A INVESTIGAR:
+              </label>
+              <select id="researchDiseaseSelect" class="form-select" style="font-weight: 600; font-size: 13.5px; flex: 1; padding: 8px 12px;" onchange="onResearchDiseaseSelected(this.value)">
+                <option value="pneumonia_bac">🫁 Neumonía Bacteriana NAC (CIE-11: CA40.0)</option>
+                <option value="sepsis_urinaria">🩸 Sepsis y Shock Séptico (CIE-11: 1C43)</option>
+                <option value="tep_agudo">🫀 Tromboembolismo Pulmonar Agudo - TEP (CIE-11: BB00)</option>
+                <option value="iamcest">❤️ Infarto Agudo de Miocardio - IAMCEST (CIE-11: BA41.0)</option>
+                <option value="epoc_exac">🌬️ EPOC Reagudizado (CIE-11: CA22.0)</option>
+              </select>
+            </div>
+
+            <div style="min-width: 260px;">
+              <label for="researchCasesSearch" class="sr-only">Buscar en casos</label>
+              <input id="researchCasesSearch" class="form-input" type="search" placeholder="Buscar por código, paciente, comorbilidad..." oninput="filterResearchCases(this.value)" style="font-size: 12.5px; padding: 8px 12px;">
+            </div>
+          </div>
+        </div>
+
+        <!-- Indicadores Clave de la Cohorte Seleccionada (Vivos vs Fallecidos) -->
+        <div class="research-kpi-grid">
+          <div class="research-kpi-card">
+            <span class="research-kpi-label">Total Casos en Cohorte</span>
+            <div id="kpiTotalCases" class="research-kpi-value">22</div>
+            <span id="kpiStayDays" class="research-kpi-sub">Estancia media: 7.0 días</span>
+          </div>
+
+          <div class="research-kpi-card" style="border-left: 4px solid #10b981;">
+            <span class="research-kpi-label" style="color: #059669;">Pacientes Vivos / Alta</span>
+            <div id="kpiAliveCases" class="research-kpi-value" style="color: #059669;">16</div>
+            <span id="kpiAlivePct" class="research-kpi-sub">72.7% Sobrevida · Edad media 55a</span>
+          </div>
+
+          <div class="research-kpi-card" style="border-left: 4px solid #ef4444;">
+            <span class="research-kpi-label" style="color: #dc2626;">Casos Fallecidos (Óbitos)</span>
+            <div id="kpiDeceasedCases" class="research-kpi-value" style="color: #dc2626;">6</div>
+            <span id="kpiDeceasedPct" class="research-kpi-sub">27.3% Mortalidad · Edad media 80a</span>
+          </div>
+
+          <div class="research-kpi-card">
+            <span class="research-kpi-label">Score NEWS2 Pico</span>
+            <div id="kpiNewsContrast" class="research-kpi-value" style="font-size: 20px; margin-top: 4px;">
+              <span style="color: #059669;">3.7</span> vs <span style="color: #dc2626;">8.5</span>
+            </div>
+            <span class="research-kpi-sub">Vivos vs Casos Fatales</span>
+          </div>
+        </div>
+
+        <!-- Sección de Análisis Detallado de Patrones y Coincidencias -->
+        <div id="patternAnalysisSection" class="panel-card" style="padding: 22px; margin-bottom: 24px; border: 1px solid var(--border-subtle); background: var(--bg-card);">
+          <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-subtle); padding-bottom: 12px; margin-bottom: 18px;">
+            <div>
+              <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--teal-600); letter-spacing: 0.5px;">ALGORITMO CLÍNICO DE COINCIDENCIAS</span>
+              <h2 id="analysisHeading" style="font-family: var(--font-display); font-size: 18px; font-weight: 700; margin-top: 2px;">
+                Patrones y Factores Críticos Identificados en Neumonía Bacteriana NAC
+              </h2>
+            </div>
+            <span id="analysisBadgeStatus" class="badge-priority alta" style="font-size: 11px;">
+              ● 5 Coincidencias Clínicas Detectadas
+            </span>
+          </div>
+
+          <!-- Contenedor Dinámico de Coincidencias -->
+          <div id="coincidencesList" style="display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 22px;">
+            <!-- Renderizado por app.js -->
+          </div>
+
+          <!-- Tabla Comparativa de Biomarcadores (Vivos vs Fallecidos) -->
+          <div style="margin-top: 18px;">
+            <h3 style="font-size: 14px; font-weight: 700; margin-bottom: 10px; color: var(--text-main);">
+              Contraste de Biomarcadores y Riesgo Relativo (Hazard Ratio)
+            </h3>
+            <div style="overflow-x: auto; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm);">
+              <table class="lab-table">
+                <thead>
+                  <tr>
+                    <th>Biomarcador Evaluado</th>
+                    <th>Valor Normal Referencia</th>
+                    <th>Promedio en Vivos</th>
+                    <th>Promedio en Fallecidos</th>
+                    <th>Factor Multiplicador (Hazard)</th>
+                    <th>Significancia Clínica</th>
+                  </tr>
+                </thead>
+                <tbody id="biomarkerComparisonTableBody">
+                  <!-- Inyectado por app.js -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Recomendaciones Asistenciales Protocolizadas -->
+          <div style="margin-top: 20px; padding: 14px 18px; background: rgba(13, 148, 136, 0.08); border: 1px solid rgba(13, 148, 136, 0.25); border-radius: var(--radius-sm);">
+            <div style="font-weight: 700; color: var(--teal-700); font-size: 13px; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              Pautas Clínicas para Evitar Desenlaces Fatales:
+            </div>
+            <ul id="recommendationsList" style="margin: 0; padding-left: 20px; font-size: 12px; color: var(--text-main); line-height: 1.6;">
+              <!-- Inyectado por app.js -->
+            </ul>
+          </div>
+        </div>
+
+        <!-- Listado de Casos Clínicos Diagnosticados con Filtros -->
+        <div class="panel-card" style="padding: 20px; background: var(--bg-card); border: 1px solid var(--border-subtle);">
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+            <div>
+              <h3 style="font-family: var(--font-display); font-size: 16px; font-weight: 700;">Casos Clínicos Individuales Diagnosticados</h3>
+              <p style="font-size: 12px; color: var(--text-muted);">Registro individualizado de pacientes con datos biomarcadores y desenlace hospitalario.</p>
+            </div>
+
+            <!-- Filtros de Estado Vital -->
+            <div class="filter-group" style="margin: 0;">
+              <button id="filterCaseAll" class="filter-chip-btn active" onclick="setResearchStatusFilter('ALL')">Todos los Casos (<span id="countCaseAll">22</span>)</button>
+              <button id="filterCaseAlive" class="filter-chip-btn" onclick="setResearchStatusFilter('vivo')">Pacientes Vivos (<span id="countCaseAlive">16</span>)</button>
+              <button id="filterCaseDeceased" class="filter-chip-btn" onclick="setResearchStatusFilter('fallecido')" style="color: #ef4444;">Óbitos / Fallecidos (<span id="countCaseDeceased">6</span>)</button>
+            </div>
+          </div>
+
+          <!-- Tabla de Casos -->
+          <div style="overflow-x: auto; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm);">
+            <table class="lab-table" style="font-size: 12px;">
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Paciente (Edad/Sexo)</th>
+                  <th>Estado Vital</th>
+                  <th>Estancia</th>
+                  <th>NEWS2 Pico</th>
+                  <th>Biomarcadores Principales</th>
+                  <th>Comorbilidades</th>
+                  <th>Desenlace y Observaciones Clínicas</th>
+                </tr>
+              </thead>
+              <tbody id="researchCasesTableBody">
+                <!-- Inyectado por app.js -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Metadatos de Gobernanza y Limitaciones del Conjunto de Datos -->
+        <div class="dataset-governance-box" style="margin-top: 24px;">
+          <b>Origen del Conjunto de Datos:</b> Sanify Clinical Research & Epidemiological Cohort Engine v3.0.<br>
+          <b>Fecha de Actualización:</b> 29 de Octubre de 2026.<br>
+          <b>Aviso Metodológico y Ético:</b> Las correlaciones presentadas en este módulo de investigación y los multiplicadores de riesgo (Hazard Ratios) son de carácter analítico asistencial. No sustituyen el criterio médico clínico ni la valoración presencial del equipo facultativo.
+        </div>
+        </div> <!-- /intPaneResearch -->
+
+        <!-- SUB-PANEL 2: COMPARADOR CLÍNICO DE ENFERMEDADES CARA A CARA -->
+        <div id="intPaneCompare" style="display: none;">
+          <div class="panel-card" style="padding: 22px; margin-bottom: 24px; background: var(--bg-card); border: 1px solid var(--border-subtle);">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; margin-bottom: 18px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 14px;">
+              <div>
+                <h3 style="font-family: var(--font-display); font-size: 18px; font-weight: 700; margin: 0; color: var(--text-main);">
+                  Comparador Clínico de Enfermedades y Perfiles Fisiológicos
+                </h3>
+                <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+                  Contraste cara a cara de constantes vitales basales, respuesta a oxígeno y ventanas críticas de complicación.
+                </p>
+              </div>
+
+              <!-- Presets Rápidos -->
+              <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button type="button" class="filter-chip-btn" onclick="setComparisonPreset('respiratorio')">
+                  🫁 Preset: Respiratorio (NAC vs TEP vs EPOC)
+                </button>
+                <button type="button" class="filter-chip-btn" onclick="setComparisonPreset('cardiovascular')">
+                  ❤️ Preset: Cardiovascular (IAM vs ICC vs ACV)
+                </button>
+                <button type="button" class="filter-chip-btn" onclick="renderComparisonModule('', 'ALL')">
+                  📋 Ver Todas
+                </button>
+              </div>
+            </div>
+
+            <!-- Filtros de búsqueda -->
+            <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px;">
+              <input id="intelligenceSearch" class="form-input" type="search" placeholder="Buscar por patología, código CIE-11 o SNOMED-CT..." oninput="handleDiseaseSearch(this.value)" style="flex: 1; min-width: 260px; font-size: 12.5px;">
+              <select id="intelligenceCategorySelect" class="form-select" style="min-width: 200px; font-size: 12.5px;" onchange="handleCategoryFilter(this.value)">
+                <option value="ALL">Todas las Especialidades</option>
+                <option value="Neumología">Neumología</option>
+                <option value="Cardiología">Cardiología</option>
+                <option value="Neurología">Neurología</option>
+                <option value="Infectología">Infectología / Sepsis</option>
+                <option value="Endocrinología">Endocrinología</option>
+              </select>
+            </div>
+
+            <!-- Grilla Dinámica de Comparación Cara a Cara -->
+            <div id="comparisonGrid" class="comparison-grid">
+              <!-- Inyectado dinámicamente por app.js -->
+            </div>
+          </div>
+
+          <!-- Gráficos de Distribución por Edad y Severidad -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; margin-bottom: 24px;">
+            <div class="panel-card" style="padding: 18px; background: var(--bg-card); border: 1px solid var(--border-subtle);">
+              <h4 style="font-size: 13px; font-weight: 700; color: var(--text-main); margin-bottom: 10px;">
+                Distribución de Pacientes por Rango Etario en Cohortes
+              </h4>
+              <div id="cohortAgeChartContainer"></div>
+            </div>
+
+            <div class="panel-card" style="padding: 18px; background: var(--bg-card); border: 1px solid var(--border-subtle);">
+              <h4 style="font-size: 13px; font-weight: 700; color: var(--text-main); margin-bottom: 10px;">
+                Estratificación de Criticidad Asistencial (NEWS2)
+              </h4>
+              <div id="cohortSeverityChartContainer"></div>
+            </div>
+          </div>
+        </div> <!-- /intPaneCompare -->
+      </section>
+
+      <!-- ====================================================================
+           4. ALERTAS Y SEGUIMIENTO (ALERTS & TRACEABILITY INBOX)
+           ==================================================================== -->
+      <section id="page-alerts" class="page-view" aria-labelledby="heading-alerts">
+        <div class="page-header">
+          <div class="page-header-text">
+            <p class="eyebrow">BANDEJA PRIORIZADA Y TRAZABILIDAD</p>
+            <h1 id="heading-alerts">Alertas y Seguimiento</h1>
+            <p>Detección temprana de variaciones clínicas para verificación asistencial y escalamiento protocolizado.</p>
+          </div>
+        </div>
+
+        <!-- Tarjeta de Estimación Demostrativa de Señal de Riesgo -->
+        <div class="synthetic-risk-card" style="margin-bottom: 20px;">
+          <h4>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            Estimación demostrativa — No validada clínicamente para diagnóstico
+          </h4>
+          <p>
+            El cálculo de alertas utiliza ponderaciones sintéticas basadas en fluctuaciones de frecuencia cardíaca, saturación de pulso (SpO2) y frecuencia respiratoria. Esta información apoya la revisión de enfermería y guardia médica, pero no reemplaza la anamnesis ni el juicio profesional.
+          </p>
+        </div>
+
+        <!-- Bandeja de Alertas Clínicas -->
+        <div class="alerts-inbox-card">
+          <div class="alerts-filter-bar">
+            <div class="filter-group">
+              <span style="font-size: 12px; font-weight: 600; color: var(--text-muted);">Filtrar por Criticidad:</span>
+              <button class="filter-chip-btn active" data-alert-prio="ALL" onclick="filterAlertsPriority('ALL')">Todas</button>
+              <button class="filter-chip-btn" data-alert-prio="alta" onclick="filterAlertsPriority('alta')">Prioridad Alta</button>
+              <button class="filter-chip-btn" data-alert-prio="media" onclick="filterAlertsPriority('media')">Media</button>
+            </div>
+
+            <div class="filter-group">
+              <span style="font-size: 12px; font-weight: 600; color: var(--text-muted);">Estado:</span>
+              <button class="filter-chip-btn active" data-alert-stat="ALL" onclick="filterAlertsStatus('ALL')">Todos los Estados</button>
+              <button class="filter-chip-btn" data-alert-stat="pendiente" onclick="filterAlertsStatus('pendiente')">Pendientes</button>
+              <button class="filter-chip-btn" data-alert-stat="resuelta" onclick="filterAlertsStatus('resuelta')">Revisadas</button>
+            </div>
+          </div>
+
+          <div id="alertsInboxContainer">
+            <!-- Lista de Alertas inyectada por app.js -->
+          </div>
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           5. CENTROS Y RED HOSPITALARIA (FEDERATED HEALTH NETWORK)
+           ==================================================================== -->
+      <section id="page-network" class="page-view" aria-labelledby="heading-network">
+        <div class="page-header">
+          <div class="page-header-text">
+            <p class="eyebrow">FEDERACIÓN Y VIGILANCIA EN RED</p>
+            <h1 id="heading-network">Centros y Red</h1>
+            <p>Arquitectura de interoperabilidad y agregación de indicadores sanitarios para redes hospitalarias conectadas.</p>
+          </div>
+        </div>
+
+        <!-- Banner de Estado de Federación -->
+        <div class="panel-card" style="background: linear-gradient(135deg, var(--navy-900), var(--navy-800)); color: #fff; padding: 22px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
+            <div>
+              <span style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--teal-400); font-weight: 700;">CONECTOR DE RED HL7 FHIR R4</span>
+              <h2 style="font-family: var(--font-display); font-size: 20px; font-weight: 700; margin-top: 2px;">Red Hospitalaria Metropolitana Federada</h2>
+              <p style="font-size: 13px; color: var(--text-dim); margin-top: 4px;">4 Nodos institucionales simulados · 800 Camas totales en vigilancia agregada.</p>
+            </div>
+            <div style="text-align: right;">
+              <span class="badge-priority baja" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border-color: rgba(52, 211, 153, 0.4);">
+                ● Interoperabilidad Segura (Simulación)
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Grilla de Nodos Conectados -->
+        <div id="networkNodesContainer" class="network-nodes-grid">
+          <!-- Nodos inyectados dinámicamente -->
+        </div>
+
+        <div class="dataset-governance-box">
+          <b>Marco Normativo de Interoperabilidad:</b> Sanify está diseñado para acoplarse con servidores de recursos FHIR R4 (Fast Healthcare Interoperability Resources) para el intercambio de observaciones de signos vitales (LOINC) y diagnósticos sindromáticos (SNOMED-CT). Cualquier despliegue con datos reales requerirá auditorías de privacidad según normativas locales, canales cifrados VPN IPSec y consentimiento informado institucional.
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           6. ADMINISTRACIÓN, ROLES Y BITÁCORA DE AUDITORÍA
+           ==================================================================== -->
+      <section id="page-admin" class="page-view" aria-labelledby="heading-admin">
+        <div class="page-header">
+          <div class="page-header-text">
+            <p class="eyebrow">GOBERNANZA, ROLES Y SEGURIDAD</p>
+            <h1 id="heading-admin">Administración y Auditoría</h1>
+            <p>Control de acceso basado en roles (RBAC), preferencias de accesibilidad y trazabilidad completa de acciones.</p>
+          </div>
+        </div>
+
+        <!-- Pestañas de Administración -->
+        <div class="admin-tabs-nav">
+          <button class="admin-tab-btn active" onclick="switchAdminTab('audit')">Bitácora de Auditoría Clínica</button>
+          <button class="admin-tab-btn" onclick="switchAdminTab('users')">Usuarios y Roles Institucionales</button>
+          <button class="admin-tab-btn" onclick="switchAdminTab('accessibility')">Preferencias de Accesibilidad</button>
+        </div>
+
+        <!-- Tab 1: Bitácora de Auditoría en Tiempo Real -->
+        <div id="adminTabAudit" class="admin-tab-pane">
+          <div class="panel-card">
+            <div class="panel-head">
+              <div class="panel-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                Registro Inmutable de Eventos de Seguridad y Accesos
+              </div>
+              <button class="btn-table-action" onclick="fetchAuditLogs()">Actualizar Bitácora</button>
+            </div>
+            <div class="panel-body" style="padding: 0; overflow-x: auto;">
+              <table class="audit-table">
+                <thead>
+                  <tr>
+                    <th>Fecha / Hora</th>
+                    <th>Profesional</th>
+                    <th>Rol</th>
+                    <th>Acción</th>
+                    <th>Recurso</th>
+                    <th>Detalle</th>
+                  </tr>
+                </thead>
+                <tbody id="auditTableBody">
+                  <!-- Entradas de auditoría inyectadas por app.js -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Usuarios y Roles -->
+        <div id="adminTabUsers" class="admin-tab-pane" style="display: none;">
+          <div class="panel-card">
+            <div class="panel-head">
+              <div class="panel-title">Personal Clínico Registrado en Estación</div>
+            </div>
+            <div class="panel-body" style="padding: 0;">
+              <table class="triage-table">
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Correo</th>
+                    <th>Rol en Sanify</th>
+                    <th>Permisos Asignados</th>
+                  </tr>
+                </thead>
+                <tbody id="adminUsersTableBody">
+                  <!-- Usuarios inyectados por app.js -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 3: Preferencias de Accesibilidad -->
+        <div id="adminTabAccessibility" class="admin-tab-pane" style="display: none;">
+          <div class="panel-card">
+            <div class="panel-head">
+              <div class="panel-title">Ergonomía Visual y Pautas WCAG</div>
+            </div>
+            <div class="panel-body">
+              <div style="display: flex; flex-direction: column; gap: 18px; max-width: 600px;">
+                <div>
+                  <label class="form-label">Tema Visual de Superficie</label>
+                  <div style="display: flex; gap: 10px; margin-top: 6px;">
+                    <button class="btn-table-action" onclick="setTheme('light')">☀ Modo Claro (Estándar)</button>
+                    <button class="btn-table-action" onclick="setTheme('dark')">☾ Modo Nocturno (Baja Luz)</button>
+                    <button class="btn-table-action" onclick="toggleHighContrast()">◐ Alto Contraste</button>
+                  </div>
+                </div>
+
+                <div>
+                  <label class="form-label">Tamaño de Tipografía</label>
+                  <div style="display: flex; gap: 10px; margin-top: 6px;">
+                    <button class="btn-table-action" onclick="setFontScale('normal')">Estándar (15px)</button>
+                    <button class="btn-table-action" onclick="setFontScale('large')">Aumentado (18px - Pantallas de Sala)</button>
+                  </div>
+                </div>
+
+                <div>
+                  <label class="form-label">Reducción de Movimiento</label>
+                  <p style="font-size: 12.5px; color: var(--text-muted); margin-bottom: 8px;">
+                    Respeta la preferencia del sistema operativo (prefers-reduced-motion) o puede forzarse manualmente para evitar animaciones no esenciales.
+                  </p>
+                  <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
+                    <input type="checkbox" id="reducedMotionCheck" onchange="toggleManualReducedMotion(this.checked)">
+                    Forzar modo sin animaciones
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
   </main>
 </div>
 
-<div id="modal" class="modal" hidden><div class="modal-box"><button class="close" onclick="closeModal()">×</button><h2 id="modalTitle">Nueva tarea</h2><div id="modalContent"></div></div></div>
-<script src="/app.js"></script>
+<!-- ==========================================================================
+     Panel Lateral Deslizante (Slide-Over Drawer) para Ficha de Paciente
+     ========================================================================== -->
+<div id="drawerBackdrop" class="drawer-backdrop" onclick="closePatientDrawer()" aria-hidden="true"></div>
+
+<aside id="patientDrawer" class="slide-drawer" role="dialog" aria-modal="true" aria-labelledby="drawerPatientTitle">
+  <div class="drawer-header">
+    <div class="drawer-header-info">
+      <h2 id="drawerPatientTitle">
+        <span id="drawerBedId">UCI-01</span> — <span id="drawerPseudoId">PAC-9101</span>
+      </h2>
+      <p id="drawerSectorRoom">Sector A (UCI) · Box 101 · Rango etario: 65-70 años</p>
+    </div>
+    <button class="btn-icon" onclick="closePatientDrawer()" title="Cerrar panel" aria-label="Cerrar panel de telemetría">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+
+  <div class="drawer-body">
+    <!-- Diagnóstico y Codificación Internacional -->
+    <div class="drawer-section">
+      <div class="drawer-section-title">Condición Sintética y Clasificación Internacional</div>
+      <div style="background: var(--bg-app); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 12px;">
+        <div id="drawerConditionName" style="font-weight: 700; font-size: 14.5px; color: var(--text-main);">
+          Neumonía Bacteriana Adquirida en la Comunidad (NAC)
+        </div>
+        <div style="margin-top: 6px; display: flex; gap: 8px; flex-wrap: wrap;">
+          <span id="drawerCie11" class="condition-codes-pill">CIE-11: CA40.0</span>
+          <span id="drawerCie10" class="condition-codes-pill">CIE-10: J18.9</span>
+          <span id="drawerSnomed" class="condition-codes-pill">SNOMED-CT: 385093006</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Signos Vitales y Telemetría -->
+    <div class="drawer-section">
+      <div class="drawer-section-title">Telemetría en Vivo y Signos Vitales</div>
+      <div class="drawer-vitals-grid">
+        <div class="drawer-vital-box">
+          <span class="vital-name">Saturación SpO2</span>
+          <div id="drawerSpo2" class="vital-val">88.5%</div>
+          <span id="drawerOxygen" class="vital-unit">Alto Flujo 35L</span>
+        </div>
+        <div class="drawer-vital-box">
+          <span class="vital-name">Frecuencia Cardíaca</span>
+          <div id="drawerHr" class="vital-val">112</div>
+          <span class="vital-unit">lpm (Sinusal)</span>
+        </div>
+        <div class="drawer-vital-box">
+          <span class="vital-name">Presión Arterial</span>
+          <div id="drawerBp" class="vital-val">105/62</div>
+          <span class="vital-unit">mmHg (PAM 76)</span>
+        </div>
+        <div class="drawer-vital-box">
+          <span class="vital-name">Frec. Respiratoria</span>
+          <div id="drawerRr" class="vital-val">28</div>
+          <span class="vital-unit">rpm (Taquipnea)</span>
+        </div>
+        <div class="drawer-vital-box">
+          <span class="vital-name">Temperatura</span>
+          <div id="drawerTemp" class="vital-val">39.1°C</div>
+          <span class="vital-unit">Axilar</span>
+        </div>
+        <div class="drawer-vital-box">
+          <span class="vital-name">Score NEWS2 Demo</span>
+          <div id="drawerNews2" class="vital-val" style="color: var(--critical-text);">7</div>
+          <span class="vital-unit">Prioridad Alta</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gráfico de Tendencia 24h -->
+    <div class="drawer-section">
+      <div class="drawer-section-title">Tendencia de Señales en las Últimas 12 Horas</div>
+      <div style="background: var(--bg-app); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 12px;">
+        <div id="drawerTrendSparklineContainer" style="height: 90px;">
+          <!-- Sparkline SVG -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Tarjeta de Estimación Demostrativa -->
+    <div class="synthetic-risk-card">
+      <h4>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Estimación Demostrativa — No Validada Clínicamente
+      </h4>
+      <p>
+        El indicador de seguimiento sugiere vigilancia respiratoria estrecha debido a hipoxemia moderada combinada con taquipnea. Requiere confirmación presencial y gasometría arterial según protocolo institucional.
+      </p>
+    </div>
+
+    <!-- Historial de Notas Clínicas -->
+    <div class="drawer-section" style="margin-top: 20px;">
+      <div class="drawer-section-title">Historial de Evolución y Observaciones</div>
+      <div id="drawerNotesList" style="display: flex; flex-direction: column; gap: 8px;">
+        <!-- Inyectado por app.js -->
+      </div>
+    </div>
+  </div>
+
+  <div class="drawer-actions-bar">
+    <button class="btn-table-action" onclick="openActionModal('review')">
+      Marcar Cama Revisada
+    </button>
+    <button class="btn-table-action" onclick="openActionModal('note')">
+      + Registrar Nota Clínica
+    </button>
+  </div>
+</aside>
+
+<!-- ==========================================================================
+     Modal de Acción Segura (Revisión y Registro de Notas)
+     ========================================================================== -->
+<dialog id="actionModalDialog" class="action-modal-dialog">
+  <div class="modal-header">
+    <h3 id="actionModalTitle">Registrar Revisión Asistencial</h3>
+    <button class="btn-icon" onclick="closeActionModal()" aria-label="Cerrar ventana">×</button>
+  </div>
+  <form id="actionModalForm" onsubmit="submitActionModal(event)">
+    <div class="modal-body">
+      <p id="actionModalSubtitle" style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">
+        Esta acción quedará registrada en la bitácora inmutable de auditoría con su usuario y hora.
+      </p>
+      <div class="form-group">
+        <label class="form-label" for="actionModalText">Observaciones Clínicas o Protocolo Aplicado</label>
+        <textarea id="actionModalText" class="form-input" rows="4" placeholder="Detalle el estado del paciente, modificaciones de soporte o conducta adoptada..." required></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn-table-action" onclick="closeActionModal()">Cancelar</button>
+      <button type="submit" class="btn-primary" style="width: auto; padding: 8px 18px;">Confirmar en Bitácora</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- ==========================================================================
+     Tooltip Flotante Global de Inspección Rápida (Hover sin Desbordamiento)
+     ========================================================================== -->
+<div id="hover-tooltip" class="cad-hover-tooltip" style="opacity: 0; pointer-events: none;">
+  <div class="tt-header">
+    <span id="tt-title" class="tt-title">HAB-101</span>
+    <span id="tt-status" class="tt-badge">OCUPADA</span>
+  </div>
+  <div id="tt-content" class="tt-content">
+    <!-- Rellenado dinámicamente -->
+  </div>
+</div>
+
+<!-- ==========================================================================
+     Modal de Historial Clínico Completo, Estudios Diagnósticos y Laboratorio
+     ========================================================================== -->
+<dialog id="patientHistoryModalDialog" class="history-modal-dialog">
+  <div class="history-modal-card">
+    <!-- Header del Historial -->
+    <div class="history-modal-header">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <span style="display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 8px; background: rgba(13, 148, 136, 0.15); color: var(--teal-600);">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        </span>
+        <div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <h3 id="historyModalPatientName" style="font-size: 16px; font-weight: 700; margin: 0; color: var(--text-main);">
+              Elena Rostova
+            </h3>
+            <span id="historyModalBedBadge" class="badge-priority baja" style="font-family: var(--font-mono); font-size: 10px;">
+              BOX 101
+            </span>
+          </div>
+          <span id="historyModalPatientMeta" style="font-size: 11.5px; color: var(--text-muted); font-family: var(--font-mono);">
+            42 años · ID: #PAC-9101 · CIE-11: CA40.0
+          </span>
+        </div>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <button onclick="closePatientHistoryModal()" class="btn-icon" style="font-size: 18px; color: var(--text-muted);" title="Cerrar ventana">✕</button>
+      </div>
+    </div>
+
+    <!-- Barra de Pestañas del Historial -->
+    <div class="history-tabs-bar">
+      <button class="history-tab-btn active" data-tab="summary" onclick="switchHistoryTab('summary')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+        Resumen Clínico y Antecedentes
+      </button>
+      <button class="history-tab-btn" data-tab="studies" onclick="switchHistoryTab('studies')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        Estudios e Imágenes Clínicas (<span id="historyStudiesCount">2</span>)
+      </button>
+      <button class="history-tab-btn" data-tab="labs" onclick="switchHistoryTab('labs')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 2v7.31"/><path d="M14 2v7.31"/><path d="M8.5 2h7"/><path d="M14 9.3a6.5 6.5 0 1 1-4 0"/></svg>
+        Exámenes de Laboratorio Anteriores (<span id="historyLabsCount">4</span>)
+      </button>
+      <button class="history-tab-btn" data-tab="notes" onclick="switchHistoryTab('notes')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        Bitácora de Evolución Médica
+      </button>
+    </div>
+
+    <!-- Contenido de las Pestañas -->
+    <div class="history-tab-content">
+      <!-- Pestaña 1: Resumen y Antecedentes -->
+      <div id="tabContentSummary" class="history-pane">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 16px;">
+          <div class="panel-card" style="padding: 16px; background: var(--bg-card); border: 1px solid var(--border-subtle);">
+            <h4 style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 10px;">
+              DIAGNÓSTICO Y TAXONOMÍA OFICIAL
+            </h4>
+            <div id="histSummaryDiag" style="font-weight: 700; font-size: 14px; color: var(--text-main); margin-bottom: 6px;">
+              Neumonía Bacteriana Adquirida en la Comunidad (NAC)
+            </div>
+            <div style="font-size: 12px; color: var(--text-muted); line-height: 1.6;">
+              • <b>CIE-11:</b> <span id="histSummaryCie11">CA40.0</span><br>
+              • <b>SNOMED-CT:</b> <span id="histSummarySnomed">385093006</span><br>
+              • <b>Médico Tratante:</b> <span id="histSummaryDoctor">Dra. Elena Morales</span><br>
+              • <b>Fecha de Ingreso:</b> <span id="histSummaryAdmDate">2026-10-27 10:15</span>
+            </div>
+          </div>
+
+          <div class="panel-card" style="padding: 16px; background: var(--bg-card); border: 1px solid var(--border-subtle);">
+            <h4 style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 10px;">
+              ANTECEDENTES Y ALERGIAS
+            </h4>
+            <div style="font-size: 12px; color: var(--text-main); line-height: 1.6;">
+              • <b>Comorbilidades:</b> <span id="histSummaryComorb">Hipertensión Arterial (HTA), Tabaquismo previo (ex-fumador)</span><br>
+              • <b>Alergias Documentadas:</b> <span id="histSummaryAllergies" style="color: #dc2626; font-weight: 600;">Penicilina (Reacción anafilactoide moderada)</span><br>
+              • <b>Grupo Sanguíneo:</b> <span id="histSummaryBlood">O positivo (Rh+)</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-card" style="padding: 16px; background: var(--bg-card); border: 1px solid var(--border-subtle); margin-bottom: 16px;">
+          <h4 style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 10px;">
+            ESQUEMA FARMACOLÓGICO ACTIVO
+          </h4>
+          <div id="histSummaryMeds" style="display: flex; flex-wrap: wrap; gap: 8px;">
+            <!-- Inyectado por app.js -->
+          </div>
+        </div>
+
+        <!-- Telemetría y Score Actual -->
+        <div class="panel-card" style="padding: 16px; background: var(--bg-card); border: 1px solid var(--border-subtle);">
+          <h4 style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 10px;">
+            CONSTANTES VITALES EN TIEMPO REAL
+          </h4>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px;">
+            <div class="hud-vital-tile"><span class="vital-tile-lbl">FC</span><span id="histVitHr" class="vital-tile-val">112 lpm</span></div>
+            <div class="hud-vital-tile"><span class="vital-tile-lbl">SpO2</span><span id="histVitSpo2" class="vital-tile-val">88.5%</span></div>
+            <div class="hud-vital-tile"><span class="vital-tile-lbl">PA</span><span id="histVitBp" class="vital-tile-val">105/62</span></div>
+            <div class="hud-vital-tile"><span class="vital-tile-lbl">FR</span><span id="histVitRr" class="vital-tile-val">28 rpm</span></div>
+            <div class="hud-vital-tile"><span class="vital-tile-lbl">TEMP</span><span id="histVitTemp" class="vital-tile-val">39.1 °C</span></div>
+            <div class="hud-vital-tile"><span class="vital-tile-lbl">NEWS2</span><span id="histVitNews" class="vital-tile-val" style="color: #ef4444;">7</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pestaña 2: Estudios Clínicos e Imágenes -->
+      <div id="tabContentStudies" class="history-pane" style="display: none;">
+        <p style="font-size: 12.5px; color: var(--text-muted); margin-bottom: 14px;">
+          Estudios por imágenes, ecocardiografías y trazados diagnósticos informados y validados por el servicio de diagnóstico:
+        </p>
+        <div id="histStudiesContainer">
+          <!-- Tarjetas de estudios inyectadas por app.js -->
+        </div>
+      </div>
+
+      <!-- Pestaña 3: Exámenes de Laboratorio Anteriores -->
+      <div id="tabContentLabs" class="history-pane" style="display: none;">
+        <p style="font-size: 12.5px; color: var(--text-muted); margin-bottom: 14px;">
+          Paneles analíticos completos cronológicos obtenidos desde el ingreso hospitalario:
+        </p>
+        <div id="histLabsContainer">
+          <!-- Paneles de laboratorio inyectados por app.js -->
+        </div>
+      </div>
+
+      <!-- Pestaña 4: Notas de Evolución Médica -->
+      <div id="tabContentNotes" class="history-pane" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+          <h4 style="font-size: 13.5px; font-weight: 700; margin: 0; color: var(--text-main);">Evoluciones Asistenciales en Bitácora</h4>
+        </div>
+        
+        <!-- Formulario para agregar nueva nota -->
+        <form id="histNewNoteForm" onsubmit="submitHistoryNote(event)" style="background: var(--bg-card); border: 1px solid var(--border-subtle); padding: 14px; border-radius: var(--radius-sm); margin-bottom: 18px;">
+          <label class="form-label" for="histNewNoteText" style="font-size: 12px; font-weight: 600; margin-bottom: 6px;">
+            + Redactar Nueva Nota de Evolución Médica / Conducta:
+          </label>
+          <textarea id="histNewNoteText" class="form-input" rows="3" placeholder="Describa el estado evolutivo del paciente, ajuste farmacológico, respuesta a oxígeno o plan para el turno..." required style="font-size: 12px; margin-bottom: 10px;"></textarea>
+          <div style="display: flex; justify-content: flex-end;">
+            <button type="submit" class="btn-primary" style="font-size: 12px; padding: 6px 16px;">
+              Guardar Nota en Base de Datos
+            </button>
+          </div>
+        </form>
+
+        <div id="histNotesList" style="display: flex; flex-direction: column; gap: 10px;">
+          <!-- Notas inyectadas por app.js -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer del Historial -->
+    <div style="padding: 12px 20px; background: var(--bg-card-alt); border-top: 1px solid var(--border-subtle); display: flex; justify-content: flex-end;">
+      <button onclick="closePatientHistoryModal()" class="btn-table-action" style="padding: 8px 18px; font-size: 12px;">
+        Cerrar Historial
+      </button>
+    </div>
+  </div>
+</dialog>
+
+<!-- ==========================================================================
+     Modal de Visualización Oficial e Impresión de Informe Epidemiológico
+     ========================================================================== -->
+<dialog id="researchReportModalDialog" class="history-modal-dialog" style="max-width: 900px;">
+  <div class="history-modal-card">
+    <div class="history-modal-header" style="background: #0f172a; color: #fff;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px; background: var(--teal-600); color: #fff;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        </span>
+        <div>
+          <h3 style="font-size: 15px; font-weight: 700; margin: 0; color: #fff;">INFORME EPIDEMIOLÓGICO CLÍNICO OFICIAL</h3>
+          <span style="font-size: 11px; color: #94a3b8;">Plataforma Hospitalaria Sanify · Generación de Evidencia Asistencial</span>
+        </div>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <button onclick="downloadOfficialReportPDF()" class="btn-primary" style="font-size: 12px; padding: 6px 14px; background: var(--teal-600);">
+          📥 Descargar PDF
+        </button>
+        <button onclick="printOfficialReportSheet()" class="btn-table-action" style="font-size: 12px; padding: 6px 14px; color: #fff; border-color: #334155;">
+          🖨 Imprimir
+        </button>
+        <button onclick="closeResearchReportModal()" class="btn-icon" style="color: #94a3b8;">✕</button>
+      </div>
+    </div>
+
+    <!-- Hoja Estructurada del Informe -->
+    <div style="padding: 24px; overflow-y: auto; background: var(--bg-app); flex: 1;">
+      <div id="printableReportSheet" class="report-sheet">
+        <!-- Renderizado dinámicamente por app.js -->
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<script src="/app.js?v=3.0.0"></script>
 </body>
 </html>

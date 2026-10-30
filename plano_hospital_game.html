@@ -1,0 +1,1531 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Gestión Clínica - Zona de Internación CAD</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & JetBrains Mono para look Blueprint / UI técnico -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+      background-color: #f8fafc;
+      overflow: hidden;
+    }
+
+    .font-mono-tech {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Patrón de cuadrícula de plano milimétrico CAD */
+    .blueprint-grid {
+      background-size: 28px 28px;
+      background-image: 
+        linear-gradient(to right, rgba(148, 163, 184, 0.14) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(148, 163, 184, 0.14) 1px, transparent 1px);
+    }
+
+    /* Habitaciones y elementos del plano */
+    .room-box {
+      transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+      cursor: pointer;
+    }
+    .room-box:hover {
+      filter: brightness(0.97);
+      outline: 2px solid #0284c7;
+      outline-offset: -2px;
+    }
+    .room-box.active-selected {
+      outline: 3px solid #0f172a !important;
+      outline-offset: -3px;
+      background-color: #f1f5f9;
+    }
+
+    /* Animación de alerta para habitaciones en crisis (Modo Alarma) */
+    @keyframes alarmPulse {
+      0%, 100% {
+        outline: 2px solid #dc2626;
+        box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.25);
+        background-color: #fff1f2;
+      }
+      50% {
+        outline: 3px solid #b91c1c;
+        box-shadow: 0 0 0 5px rgba(220, 38, 38, 0.4);
+        background-color: #ffe4e6;
+      }
+    }
+    .room-box.in-alarm {
+      animation: alarmPulse 1.4s ease-in-out infinite;
+    }
+
+    /* Pulso tenue para monitores en estado normal */
+    @keyframes subtlePulse {
+      0%, 100% { opacity: 0.9; }
+      50% { opacity: 0.35; }
+    }
+    .pulse-dot {
+      animation: subtlePulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+
+    /* Tooltip flotante de inspección rápida (siempre visible y acotado al visor) */
+    #hover-tooltip {
+      pointer-events: none;
+      transition: opacity 0.12s ease;
+      z-index: 99999;
+      max-width: 320px;
+    }
+
+    /* Ocultar scrollbars manteniendo scroll */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="w-screen h-screen flex flex-col bg-[#f8fafc] text-slate-800">
+
+  <!-- ==================== HEADER HUD PRINCIPAL ==================== -->
+  <header class="h-14 border-b border-slate-300 bg-white/90 backdrop-blur px-4 flex items-center justify-between z-20 shrink-0 select-none">
+    <div class="flex items-center gap-4">
+      <div class="flex items-center gap-2">
+        <span class="inline-block w-2.5 h-2.5 rounded-full bg-slate-900"></span>
+        <h1 class="text-xs sm:text-sm font-bold tracking-wider font-mono-tech uppercase text-slate-900">
+          SEC-B // PISO 02 : UNIDAD DE INTERNACIÓN Y VIGILANCIA
+        </h1>
+      </div>
+      <span class="text-xs px-2 py-0.5 rounded border border-slate-300 text-slate-600 font-mono-tech hidden md:inline-block">
+        CAD-VIEW 2.4 · HOSP. CENTRAL
+      </span>
+    </div>
+
+    <!-- Indicadores de métricas del simulador -->
+    <div class="flex items-center gap-2 sm:gap-5 text-xs font-mono-tech">
+      <!-- Ocupación -->
+      <div class="flex items-center gap-2 bg-slate-100 px-2.5 py-1 rounded border border-slate-200">
+        <i data-lucide="bed" class="w-3.5 h-3.5 text-slate-600"></i>
+        <span>CAMAS:</span>
+        <span id="stat-occupied" class="font-bold text-slate-900">11</span>
+        <span class="text-slate-400">/</span>
+        <span id="stat-total" class="text-slate-600">16</span>
+      </div>
+
+      <!-- Alertas Activas -->
+      <div id="stat-alarms-badge" class="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 rounded border border-slate-200 transition">
+        <span id="stat-alarms-dot" class="w-2 h-2 rounded-full bg-emerald-500"></span>
+        <span>ALERTAS:</span>
+        <span id="stat-alarms-count" class="font-bold text-slate-800">0 CRÍTICAS</span>
+      </div>
+
+      <!-- Turno / Personal -->
+      <div class="hidden lg:flex items-center gap-2 bg-slate-100 px-2.5 py-1 rounded border border-slate-200">
+        <i data-lucide="users" class="w-3.5 h-3.5 text-slate-600"></i>
+        <span>GUARDIA: <strong class="text-slate-900">4 ENF / 2 MED</strong></span>
+      </div>
+
+      <!-- Reloj del simulador -->
+      <div class="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 rounded border border-slate-200">
+        <i data-lucide="clock" class="w-3.5 h-3.5 text-slate-600"></i>
+        <span id="game-clock" class="font-bold text-slate-900">14:32:00</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== BANNER DE MODO ALARMA ACTIVO ==================== -->
+  <div id="alarm-banner" class="hidden h-9 bg-red-50 border-b border-red-200 px-4 flex items-center justify-between text-xs font-mono-tech text-red-900 z-15 shrink-0 transition-all">
+    <div class="flex items-center gap-2 overflow-hidden">
+      <span class="w-2 h-2 rounded-full bg-red-600 animate-ping shrink-0"></span>
+      <span class="font-bold shrink-0">⚠ CÓDIGO CLÍNICO ACTIVO:</span>
+      <span id="alarm-banner-text" class="truncate text-red-800">Deterioro agudo detectado. Se requiere intervención del equipo asistencial.</span>
+    </div>
+    <div class="flex items-center gap-2 shrink-0">
+      <button onclick="resolveAllAlarms()" class="px-2.5 py-0.5 rounded bg-red-600 hover:bg-red-700 text-white font-medium text-[11px] transition">
+        ESTABILIZAR TODOS
+      </button>
+    </div>
+  </div>
+
+  <!-- ==================== BARRA DE HERRAMIENTAS, FILTROS Y BOTÓN MODO ALARMA ==================== -->
+  <div class="h-11 bg-white border-b border-slate-200 px-4 flex items-center justify-between text-xs z-10 shrink-0">
+    <!-- Filtros de vista -->
+    <div class="flex items-center gap-1.5 font-mono-tech">
+      <span class="text-slate-500 mr-1 hidden sm:inline">FILTRO:</span>
+      <button onclick="setFilter('all')" id="filter-all" class="px-2.5 py-1 rounded bg-slate-900 text-white font-medium transition">
+        TODAS (16)
+      </button>
+      <button onclick="setFilter('occupied')" id="filter-occupied" class="px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 transition">
+        OCUPADAS (<span id="count-occupied">11</span>)
+      </button>
+      <button onclick="setFilter('free')" id="filter-free" class="px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 transition">
+        DISPONIBLES (<span id="count-free">5</span>)
+      </button>
+      <button onclick="setFilter('alarm')" id="filter-alarm" class="px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-red-700 transition font-semibold">
+        EN ALERTA (<span id="count-alarm">0</span>)
+      </button>
+    </div>
+
+    <!-- Botón de Modo Alarma / Simular Emergencia -->
+    <div class="flex items-center gap-3">
+      <button id="btn-toggle-alarm-mode" onclick="toggleGlobalAlarmMode()" class="px-2.5 py-1 rounded border border-slate-300 hover:border-red-400 bg-white text-slate-700 hover:text-red-700 font-mono-tech flex items-center gap-1.5 transition">
+        <i data-lucide="siren" class="w-3.5 h-3.5 text-red-600"></i>
+        <span id="btn-alarm-text">SIMULAR MODO ALARMA</span>
+      </button>
+
+      <!-- Controles de navegación de plano (Zoom & Reset) -->
+      <div class="flex items-center gap-1 font-mono-tech border-l border-slate-200 pl-3">
+        <button onclick="zoomMap(-0.15)" title="Alejar (-)" class="p-1.5 rounded border border-slate-200 hover:bg-slate-100 text-slate-700">
+          <i data-lucide="minus" class="w-4 h-4"></i>
+        </button>
+        <span id="zoom-label" class="w-12 text-center text-slate-500 font-mono-tech">95%</span>
+        <button onclick="zoomMap(0.15)" title="Acercar (+)" class="p-1.5 rounded border border-slate-200 hover:bg-slate-100 text-slate-700">
+          <i data-lucide="plus" class="w-4 h-4"></i>
+        </button>
+        <button onclick="resetZoomPan()" title="Centrar Plano" class="px-2 py-1 ml-1 rounded border border-slate-200 hover:bg-slate-100 text-slate-700 flex items-center gap-1">
+          <i data-lucide="maximize" class="w-3.5 h-3.5"></i>
+          <span class="hidden sm:inline">CENTRAR</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== ÁREA PRINCIPAL INTERACTIVA (VIEWPORT PLANO) ==================== -->
+  <main id="viewport-container" class="relative flex-1 w-full h-full overflow-hidden blueprint-grid cursor-grab active:cursor-grabbing select-none" style="touch-action: none;">
+    
+    <!-- Contenedor transformable (Pan & Zoom con origen 0 0 y límites) -->
+    <div id="blueprint-canvas" class="absolute will-change-transform" style="transform-origin: 0 0; transform: translate(0px, 0px) scale(0.95);">
+      
+      <!-- CONTENEDOR DEL PLANO ARQUITECTÓNICO (Dimensiones fijas estilo CAD) -->
+      <div class="relative w-[1200px] h-[800px] bg-white border-2 border-slate-800 shadow-xl rounded-sm p-4">
+        
+        <!-- Marcadores técnicos en esquinas (Estilo plano de videojuego) -->
+        <div class="absolute -top-2 -left-2 w-4 h-4 border-t-2 border-l-2 border-slate-900"></div>
+        <div class="absolute -top-2 -right-2 w-4 h-4 border-t-2 border-r-2 border-slate-900"></div>
+        <div class="absolute -bottom-2 -left-2 w-4 h-4 border-b-2 border-l-2 border-slate-900"></div>
+        <div class="absolute -bottom-2 -right-2 w-4 h-4 border-b-2 border-r-2 border-slate-900"></div>
+        
+        <!-- Textos técnicos de fondo -->
+        <div class="absolute top-2 left-3 text-[10px] font-mono-tech tracking-widest text-slate-400">
+          ESTRUCTURA HOSPITALARIA // MODULO B-04 // CAPACIDAD 16 CAMAS // ESCALA 1:100
+        </div>
+        <div class="absolute top-2 right-3 text-[10px] font-mono-tech tracking-widest text-slate-400">
+          PLANTA GENERAL N.2 · ALA OESTE/ESTE
+        </div>
+
+        <!-- ================= PASILLOS Y DISTRIBUCIÓN ================= -->
+        <div class="w-full h-full border border-slate-300 relative flex flex-col justify-between">
+          
+          <!-- HILERA NORTE: Habitaciones 101 a 105 -->
+          <div class="grid grid-cols-5 gap-2 h-36 w-full border-b-2 border-slate-700 bg-slate-50/50 p-1.5">
+            <div id="room-101" onclick="handleRoomClick('101')" onmouseenter="showTooltip(event, '101')" onmouseleave="hideTooltip()" class="room-box relative bg-white border border-slate-400 rounded-sm p-2 flex flex-col justify-between"></div>
+            <div id="room-102" onclick="handleRoomClick('102')" onmouseenter="showTooltip(event, '102')" onmouseleave="hideTooltip()" class="room-box relative bg-white border border-slate-400 rounded-sm p-2 flex flex-col justify-between"></div>
+            <div id="room-103" onclick="handleRoomClick('103')" onmouseenter="showTooltip(event, '103')" onmouseleave="hideTooltip()" class="room-box relative bg-white border border-slate-400 rounded-sm p-2 flex flex-col justify-between"></div>
+            <div id="room-104" onclick="handleRoomClick('104')" onmouseenter="showTooltip(event, '104')" onmouseleave="hideTooltip()" class="room-box relative bg-white border border-slate-400 rounded-sm p-2 flex flex-col justify-between"></div>
+            <div id="room-105" onclick="handleRoomClick('105')" onmouseenter="showTooltip(event, '105')" onmouseleave="hideTooltip()" class="room-box relative bg-white border border-slate-400 rounded-sm p-2 flex flex-col justify-between"></div>
+          </div>
+
+          <!-- SECCIÓN CENTRAL (Alas laterales + Estación de Enfermería al Centro) -->
+          <div class="flex-1 flex justify-between py-2">
+            
+            <!-- ALA OESTE: Habitaciones 106, 107, 108 -->
+            <div class="w-52 flex flex-col gap-2 border-r-2 border-slate-700 bg-slate-50/50 p-1.5">
+              <div id="room-106" onclick="handleRoomClick('106')" onmouseenter="showTooltip(event, '106')" onmouseleave="hideTooltip()" class="room-box flex-1 relative bg-white border border-slate-400 rounded-sm p-2 flex flex-col justify-between"></div>
+              <div id="room-107" onclick="handleRoomClick('107')" onmouseenter="showTooltip(event, '107')" onmouseleave="hideTooltip()" class="room-box flex-1 relative bg-white border border-slate-400 rounded-sm p-2 flex flex-col justify-between"></div>
+              <div id="room-108" onclick="handleRoomClick('108')" onmouseenter="showTooltip(event, '108')" onmouseleave="hideTooltip()" class="room-box flex-1 relative bg-white border border-slate-400 rounded-sm p-2 flex flex-col justify-between"></div>
+            </div>
+
+            <!-- NÚCLEO CENTRAL: ENFERMERÍA Y SECRETARÍA -->
+            <div class="flex-1 flex items-center justify-center px-6">
+              <div onclick="handleStationClick()" onmouseenter="showStationTooltip(event)" onmouseleave="hideTooltip()" class="w-full max-w-xl h-64 border-2 border-slate-800 bg-white shadow-sm rounded-sm p-3 relative cursor-pointer hover:border-slate-900 hover:shadow-md transition">
+                
+                <!-- Encabezado de la estación -->
+                <div class="flex items-center justify-between border-b border-slate-200 pb-1.5">
+                  <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded bg-slate-800"></span>
+                    <span class="font-mono-tech text-xs font-bold tracking-wider text-slate-900">
+                      ESTACIÓN CENTRAL // ENFERMERÍA & MONITOREO
+                    </span>
+                  </div>
+                  <span class="text-[10px] font-mono-tech bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200">
+                    HUB OPERATIVO
+                  </span>
+                </div>
+
+                <!-- Representación esquemática del mobiliario central minimalista -->
+                <div class="w-full h-44 mt-2 relative border border-dashed border-slate-300 rounded flex items-center justify-center p-2 bg-slate-50/40">
+                  
+                  <!-- Mostrador circular/isla central -->
+                  <div class="w-72 h-28 border-2 border-slate-700 bg-white rounded-lg flex flex-col items-center justify-center relative shadow-sm">
+                    <span class="text-[11px] font-mono-tech font-semibold text-slate-800 tracking-wide">ISLA DE MONITOREO</span>
+                    <span class="text-[9px] font-mono-tech text-slate-500">4 TERMINALES ACTIVAS</span>
+
+                    <!-- Escritorios esquemáticos -->
+                    <div class="absolute -top-3 w-16 h-3 bg-slate-200 border border-slate-400 rounded-sm flex items-center justify-center text-[7px] font-mono">TERM 1</div>
+                    <div class="absolute -bottom-3 w-16 h-3 bg-slate-200 border border-slate-400 rounded-sm flex items-center justify-center text-[7px] font-mono">TERM 2</div>
+                    <div class="absolute -left-3 h-12 w-3 bg-slate-200 border border-slate-400 rounded-sm"></div>
+                    <div class="absolute -right-3 h-12 w-3 bg-slate-200 border border-slate-400 rounded-sm"></div>
+                  </div>
+
+                  <!-- Farmacia rápida y Archivo clínico -->
+                  <div class="absolute left-3 top-3 bottom-3 w-14 border border-slate-400 bg-white rounded-sm flex flex-col items-center justify-center p-1 text-center">
+                    <span class="text-[8px] font-mono-tech text-slate-600 font-medium">FARMACIA RÁPIDA</span>
+                  </div>
+
+                  <div class="absolute right-3 top-3 bottom-3 w-14 border border-slate-400 bg-white rounded-sm flex flex-col items-center justify-center p-1 text-center">
+                    <span class="text-[8px] font-mono-tech text-slate-600 font-medium">ARCHIVO CLÍNICO</span>
+                  </div>
+                </div>
+
+                <div class="mt-1 flex justify-between text-[9px] font-mono-tech text-slate-500">
+                  <span>CLIC PARA VER DETALLES DE GUARDIA</span>
+                  <span>ACCESO PASILLO 360°</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- ALA ESTE: Habitaciones 109, 110, 111 -->
+            <div class="w-52 flex flex-col gap-2 border-l-2 border-slate-700 bg-slate-50/50 p-1.5">
+              <div id="room-109" onclick="handleRoomClick('109')" onmouseenter="showTooltip(event, '109')" onmouseleave="hideTooltip()" class="room-box flex-1 relative bg-white border border-slate-400 rounded-sm p-2 flex flex-col justify-between"></div>
+              <div id="room-110" onclick="handleRoomClick('110')" onmouseenter="showTooltip(event, '110')" onmouseleave="hideTooltip()" class="room-box flex-1 relative bg-white border border-slate-400 rounded-sm p-2 flex flex-col justify-between"></div>
+              <div id="room-111" onclick="handleRoomClick('111')" onmouseenter="showTooltip(event, '111')" onmouseleave="hideTooltip()" class="room-box flex-1 relative bg-white border border-slate-400 rounded-sm p-2 flex flex-col justify-between"></div>
+            </div>
+
+          </div>
+
+          <!-- HILERA SUR: Habitaciones 112 a 116 -->
+          <div class="grid grid-cols-5 gap-2 h-36 w-full border-t-2 border-slate-700 bg-slate-50/50 p-1.5">
+            <div id="room-112" onclick="handleRoomClick('112')" onmouseenter="showTooltip(event, '112')" onmouseleave="hideTooltip()" class="room-box relative bg-white border border-slate-400 rounded-sm p-2 flex flex-col justify-between"></div>
+            <div id="room-113" onclick="handleRoomClick('113')" onmouseenter="showTooltip(event, '113')" onmouseleave="hideTooltip()" class="room-box relative bg-white border border-slate-400 rounded-sm p-2 flex flex-col justify-between"></div>
+            <div id="room-114" onclick="handleRoomClick('114')" onmouseenter="showTooltip(event, '114')" onmouseleave="hideTooltip()" class="room-box relative bg-white border border-slate-400 rounded-sm p-2 flex flex-col justify-between"></div>
+            <div id="room-115" onclick="handleRoomClick('115')" onmouseenter="showTooltip(event, '115')" onmouseleave="hideTooltip()" class="room-box relative bg-white border border-slate-400 rounded-sm p-2 flex flex-col justify-between"></div>
+            <div id="room-116" onclick="handleRoomClick('116')" onmouseenter="showTooltip(event, '116')" onmouseleave="hideTooltip()" class="room-box relative bg-white border border-slate-400 rounded-sm p-2 flex flex-col justify-between"></div>
+          </div>
+
+        </div>
+
+        <!-- Indicador de Accesos / Pasillos -->
+        <div class="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-white px-3 border border-slate-400 text-[10px] font-mono-tech text-slate-600">
+          ▲ ACCESO PRINCIPAL AL PISO Y ASCENSORES DE SERVICIO
+        </div>
+      </div>
+    </div>
+
+    <!-- Guía flotante de interacción en esquina inferior izquierda -->
+    <div class="absolute bottom-4 left-4 bg-white/90 backdrop-blur border border-slate-200 px-3 py-2 rounded shadow-sm text-xs text-slate-500 font-mono-tech pointer-events-none hidden sm:block">
+      <span>Ratón: Arrastrar para mover • Rueda para zoom • Pasa el mouse para resumen • Clic para ficha técnica</span>
+    </div>
+  </main>
+
+  <!-- ==================== TOOLTIP FLOTANTE DE INSPECCIÓN RÁPIDA (HOVER) ==================== -->
+  <div id="hover-tooltip" class="fixed pointer-events-none z-[99999] bg-slate-900/95 backdrop-blur text-white p-3 rounded shadow-2xl border border-slate-700 text-xs font-mono-tech opacity-0 min-w-[240px] max-w-[320px] transition-opacity duration-150">
+    <div class="flex items-center justify-between border-b border-slate-700 pb-1.5 mb-2">
+      <span id="tt-title" class="font-bold text-slate-200">HAB-101</span>
+      <span id="tt-status" class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-700 text-slate-200">OCUPADA</span>
+    </div>
+    <div id="tt-content" class="space-y-1 text-slate-300 text-[11px]">
+      <!-- Dinámico -->
+    </div>
+  </div>
+
+  <!-- ==================== DRAWER / HUD LATERAL DERECHO (DETALLE PACIENTE) ==================== -->
+  <aside id="side-hud" class="fixed top-0 right-0 h-full w-full max-w-md bg-white border-l border-slate-300 shadow-2xl z-30 transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
+    
+    <!-- Header del HUD -->
+    <div class="h-14 border-b border-slate-200 px-4 flex items-center justify-between bg-slate-50">
+      <div class="flex items-center gap-2">
+        <span id="hud-indicator-dot" class="w-2.5 h-2.5 rounded-full bg-slate-800"></span>
+        <span id="hud-room-title" class="font-mono-tech font-bold text-slate-900 text-sm tracking-wide">
+          HABITACIÓN 101
+        </span>
+      </div>
+      <button onclick="closeSideHud()" class="p-1 rounded hover:bg-slate-200 text-slate-500 hover:text-slate-900 transition">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+
+    <!-- Contenido del HUD (Scrollable) -->
+    <div class="flex-1 overflow-y-auto p-5 space-y-5 text-sm no-scrollbar">
+      
+      <!-- Estado de la cama y Alerta -->
+      <div id="hud-status-banner" class="flex items-center justify-between p-3 rounded border border-slate-200 bg-slate-50">
+        <span class="text-xs font-mono-tech text-slate-500">ESTADO CLÍNICO</span>
+        <span id="hud-room-status" class="text-xs font-mono-tech font-bold px-2 py-0.5 rounded bg-slate-200 text-slate-800">
+          OCUPADA
+        </span>
+      </div>
+
+      <!-- Tarjeta de Alarma Crítica en Drawer si está activa -->
+      <div id="hud-alarm-alert-card" class="hidden p-3.5 rounded border border-red-200 bg-red-50 text-red-900 space-y-2">
+        <div class="flex items-center justify-between font-mono-tech font-bold text-xs">
+          <span class="flex items-center gap-1.5 text-red-700">
+            <i data-lucide="alert-triangle" class="w-4 h-4 text-red-600"></i>
+            CRISIS / DETERIORO DETECTADO
+          </span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-red-200 text-red-800">CÓDIGO VITAL</span>
+        </div>
+        <p id="hud-alarm-motive" class="text-xs text-red-800 leading-relaxed font-mono-tech">
+          Desaturación aguda y taquicardia sostenida.
+        </p>
+        <button onclick="resolveCurrentRoomAlarm()" class="w-full mt-1 py-1.5 px-3 bg-red-600 hover:bg-red-700 text-white font-mono-tech text-xs rounded font-medium transition flex items-center justify-center gap-1.5">
+          <i data-lucide="check-circle" class="w-3.5 h-3.5"></i>
+          APLICAR PROTOCOLO Y ESTABILIZAR
+        </button>
+      </div>
+
+      <!-- Sección Paciente (Visible si está ocupada) -->
+      <div id="hud-patient-section" class="space-y-4">
+        
+        <!-- Ficha de Datos Personales -->
+        <div class="border border-slate-200 rounded p-4 space-y-3">
+          <div class="text-[11px] font-mono-tech tracking-wider text-slate-400 uppercase">
+            FICHA DEL PACIENTE
+          </div>
+          <div>
+            <div id="hud-patient-name" class="font-bold text-base text-slate-900">
+              Elena Rostova
+            </div>
+            <div id="hud-patient-meta" class="text-xs text-slate-500 font-mono-tech">
+              42 años • ID: #MED-8492
+            </div>
+          </div>
+          <div class="pt-2 border-t border-slate-100 grid grid-cols-2 gap-2 text-xs">
+            <div>
+              <span class="text-slate-400 block text-[10px] font-mono-tech">DIAGNÓSTICO</span>
+              <span id="hud-patient-diag" class="font-medium text-slate-800">Post-operatorio Apendicitis</span>
+            </div>
+            <div>
+              <span class="text-slate-400 block text-[10px] font-mono-tech">TIEMPO INTERNADO</span>
+              <span id="hud-patient-time" class="font-medium text-slate-800">36 horas</span>
+            </div>
+          </div>
+          <div class="pt-1 text-xs">
+            <span class="text-slate-400 block text-[10px] font-mono-tech">MÉDICO A CARGO</span>
+            <span id="hud-patient-doctor" class="font-medium text-slate-800">Dra. Elena Morales</span>
+          </div>
+        </div>
+
+        <!-- Telemetría & Signos Vitales Simulado -->
+        <div class="border border-slate-200 rounded p-4 bg-slate-50/50 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-mono-tech tracking-wider text-slate-400 uppercase">TELEMETRÍA EN VIVO</span>
+            <span id="hud-signal-indicator" class="flex items-center gap-1.5 text-[10px] font-mono-tech text-slate-600">
+              <span class="w-2 h-2 rounded-full bg-emerald-500 pulse-dot"></span> SEÑAL ESTABLE
+            </span>
+          </div>
+
+          <div class="grid grid-cols-4 gap-1.5 text-center">
+            <div class="bg-white p-2 rounded border border-slate-200">
+              <span class="text-[9px] font-mono-tech text-slate-400 block">RITMO (BPM)</span>
+              <span id="hud-bpm" class="font-mono-tech text-base font-bold text-slate-800">74</span>
+            </div>
+            <div class="bg-white p-2 rounded border border-slate-200">
+              <span class="text-[9px] font-mono-tech text-slate-400 block">SpO2</span>
+              <span id="hud-spo2" class="font-mono-tech text-base font-bold text-slate-800">98%</span>
+            </div>
+            <div class="bg-white p-2 rounded border border-slate-200">
+              <span class="text-[9px] font-mono-tech text-slate-400 block">PRESIÓN</span>
+              <span id="hud-bp" class="font-mono-tech text-base font-bold text-slate-800">120/80</span>
+            </div>
+            <div class="bg-white p-2 rounded border border-slate-200">
+              <span class="text-[9px] font-mono-tech text-slate-400 block">TEMP</span>
+              <span id="hud-temp" class="font-mono-tech text-base font-bold text-slate-800">36.7°</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Esquema de Medicación Activa -->
+        <div class="border border-slate-200 rounded p-4 space-y-2">
+          <span class="text-[11px] font-mono-tech tracking-wider text-slate-400 uppercase block">MEDICACIÓN EN CURSO</span>
+          <div id="hud-meds" class="text-xs text-slate-700 space-y-1 font-mono-tech">
+            <!-- Dinámico -->
+          </div>
+        </div>
+
+        <!-- Parámetros de la Habitación -->
+        <div class="border border-slate-200 rounded p-4 space-y-2 text-xs">
+          <span class="text-[11px] font-mono-tech tracking-wider text-slate-400 uppercase block">ENTORNO Y SOPORTE</span>
+          <div class="flex justify-between py-1 border-b border-slate-100">
+            <span class="text-slate-500">Climatización Cuarto:</span>
+            <span id="hud-room-temp" class="font-mono-tech font-semibold">22.2 °C</span>
+          </div>
+          <div class="flex justify-between py-1 border-b border-slate-100">
+            <span class="text-slate-500">Higiene y Desinfección:</span>
+            <span id="hud-room-hygiene" class="font-mono-tech font-semibold text-emerald-600">98% Certificada</span>
+          </div>
+          <div class="flex justify-between py-1">
+            <span class="text-slate-500">Llamador de Enfermería:</span>
+            <span class="font-mono-tech text-slate-700">En reposo (Operativo)</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Sección si la cama está DISPONIBLE -->
+      <div id="hud-empty-section" class="hidden p-6 text-center border border-dashed border-slate-300 rounded space-y-3">
+        <i data-lucide="bed-single" class="w-10 h-10 mx-auto text-slate-400"></i>
+        <div>
+          <h4 class="font-bold text-slate-800">Habitación Vacía</h4>
+          <p class="text-xs text-slate-500 mt-1">Limpia, higienizada y lista para recibir a un nuevo paciente.</p>
+        </div>
+        <button onclick="admitRandomPatient()" class="w-full py-2 px-3 bg-slate-900 hover:bg-slate-800 text-white text-xs font-mono-tech rounded font-medium transition">
+          + ASIGNAR PACIENTE INGRESANTE
+        </button>
+      </div>
+
+    </div>
+
+    <!-- Barra de acciones inferiores estilo UI de juego -->
+    <div id="hud-actions" class="p-4 border-t border-slate-200 bg-slate-50 flex flex-col gap-2">
+      <button onclick="openStandalonePatientHistory(currentSelectedRoomId)" class="w-full py-2 px-3 bg-teal-700 hover:bg-teal-800 text-white text-xs font-mono-tech rounded font-bold transition flex items-center justify-center gap-1.5 shadow-sm">
+        <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+        VER HISTORIAL CLÍNICO Y ESTUDIOS
+      </button>
+      <div class="grid grid-cols-2 gap-2">
+        <button onclick="notifyAction('Enfermero despachado a la habitación')" class="py-2 px-3 border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-xs font-mono-tech rounded transition flex items-center justify-center gap-1.5">
+          <i data-lucide="bell" class="w-3.5 h-3.5"></i>
+          LLAMAR ENF.
+        </button>
+        <button id="btn-trigger-single-alarm" onclick="triggerCurrentRoomAlarm()" class="py-2 px-3 border border-red-300 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-mono-tech rounded transition flex items-center justify-center gap-1.5">
+          <i data-lucide="alert-octagon" class="w-3.5 h-3.5"></i>
+          INDUCIR CRISIS
+        </button>
+      </div>
+      <button onclick="dischargePatient()" class="w-full py-2 px-3 border border-slate-800 bg-slate-900 hover:bg-slate-800 text-white text-xs font-mono-tech rounded transition flex items-center justify-center gap-1.5">
+        <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+        DAR DE ALTA MÉDICA
+      </button>
+    </div>
+  </aside>
+
+  <!-- ==================== MODAL DE ESTACIÓN CENTRAL ==================== -->
+  <div id="station-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 hidden flex items-center justify-center p-4">
+    <div class="bg-white border border-slate-300 rounded shadow-2xl max-w-md w-full p-6 space-y-4 font-mono-tech">
+      <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+        <div class="flex items-center gap-2">
+          <span class="w-3 h-3 bg-slate-900 rounded-sm"></span>
+          <h3 class="font-bold text-slate-900 text-sm">ESTACIÓN CENTRAL DE ENFERMERÍA</h3>
+        </div>
+        <button onclick="closeStationModal()" class="text-slate-400 hover:text-slate-800">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      
+      <div class="space-y-3 text-xs text-slate-600">
+        <p>Núcleo de supervisión y gestión del Ala de Internación. Punto neurálgico para distribución de medicación, registro en fichas y monitoreo centralizado.</p>
+        
+        <div class="bg-slate-50 p-3 rounded border border-slate-200 space-y-2">
+          <div class="font-bold text-slate-800">PERSONAL EN TURNO ACTUAL:</div>
+          <div class="flex justify-between"><span>• Dra. Mariana Silva</span> <span class="text-slate-500">Médica de Guardia</span></div>
+          <div class="flex justify-between"><span>• Dr. Lucas Beltrán</span> <span class="text-slate-500">Clínico Asignado</span></div>
+          <div class="flex justify-between"><span>• Enf. Carolina Gómez</span> <span class="text-slate-500">Jefa de Enfermería</span></div>
+          <div class="flex justify-between"><span>• Enf. Martín Vega</span> <span class="text-slate-500">Asistencia Perimetral</span></div>
+        </div>
+
+        <div class="border border-slate-200 p-3 rounded flex justify-between items-center">
+          <span>SUMINISTRO FARMACÉUTICO:</span>
+          <span class="font-bold text-slate-800">94% ÓPTIMO</span>
+        </div>
+        
+        <div class="border border-slate-200 p-3 rounded flex justify-between items-center">
+          <span>RATIO ENFERMERO/CAMA:</span>
+          <span class="font-bold text-slate-800">1 : 4 (Dentro de norma)</span>
+        </div>
+      </div>
+
+      <button onclick="closeStationModal()" class="w-full py-2 bg-slate-900 text-white rounded text-xs hover:bg-slate-800 transition">
+        CERRAR RESUMEN
+      </button>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL DE HISTORIAL CLÍNICO Y ESTUDIOS (COMPLETO) ==================== -->
+  <div id="standalonePatientHistoryModal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+    <div class="bg-white border border-slate-300 rounded-lg shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col font-sans overflow-hidden">
+      <!-- Modal Header -->
+      <div class="bg-slate-900 text-white px-5 py-3.5 flex items-center justify-between border-b border-slate-700">
+        <div class="flex items-center gap-3">
+          <span class="w-7 h-7 rounded bg-teal-600 flex items-center justify-center text-white">
+            <i data-lucide="folder-git-2" class="w-4 h-4"></i>
+          </span>
+          <div>
+            <h3 id="saHistPatientName" class="font-bold text-sm font-mono-tech tracking-wide text-white">HISTORIA CLÍNICA // EXPEDIENTE HOSPITALARIO</h3>
+            <span id="saHistRoomBadge" class="text-[11px] text-teal-400 font-mono-tech">SALA 101 · EXP: #MED-10184 · Dra. Elena Morales</span>
+          </div>
+        </div>
+        <button onclick="closeStandalonePatientHistory()" class="text-slate-400 hover:text-white transition p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Tabs Navigation -->
+      <div class="flex border-b border-slate-200 bg-slate-50 px-4 gap-1 text-xs font-mono-tech font-semibold">
+        <button onclick="switchStandaloneTab('summary')" id="saTabBtn-summary" class="px-3.5 py-2.5 border-b-2 border-teal-600 text-teal-700">Resumen y Signos</button>
+        <button onclick="switchStandaloneTab('studies')" id="saTabBtn-studies" class="px-3.5 py-2.5 border-b-2 border-transparent text-slate-600 hover:text-slate-900">Estudios e Imágenes (3)</button>
+        <button onclick="switchStandaloneTab('labs')" id="saTabBtn-labs" class="px-3.5 py-2.5 border-b-2 border-transparent text-slate-600 hover:text-slate-900">Laboratorios Anteriores (4)</button>
+        <button onclick="switchStandaloneTab('notes')" id="saTabBtn-notes" class="px-3.5 py-2.5 border-b-2 border-transparent text-slate-600 hover:text-slate-900">Bitácora Médica</button>
+      </div>
+
+      <!-- Tab Content Area -->
+      <div class="p-5 overflow-y-auto flex-1 space-y-4 text-xs font-sans text-slate-700">
+        <!-- Pestaña 1: Resumen y Signos -->
+        <div id="saTabContent-summary" class="space-y-4">
+          <div class="bg-teal-50/70 border border-teal-200 rounded p-3.5 flex items-start gap-3">
+            <i data-lucide="activity" class="w-5 h-5 text-teal-700 flex-shrink-0 mt-0.5"></i>
+            <div>
+              <div class="font-bold text-slate-900 font-mono-tech text-xs" id="saHistDiagTitle">Neumonía Bacteriana Adquirida en la Comunidad (NAC)</div>
+              <div class="text-[11px] text-slate-600 mt-0.5">Clasificación CIE-11: CA40.0 · SNOMED-CT: 385093006 · Alergias: Penicilina (Reacción cutánea)</div>
+            </div>
+          </div>
+
+          <div class="border border-slate-200 rounded p-3.5 space-y-2 bg-white">
+            <span class="text-[11px] font-mono-tech text-slate-400 font-bold uppercase block tracking-wider">CONSTANTES VITALES ACTUALES EN TELEMETRÍA</span>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center font-mono-tech">
+              <div class="bg-slate-50 border border-slate-200 rounded p-2">
+                <span class="text-[10px] text-slate-400 block">FC (BPM)</span>
+                <span id="saHistHr" class="text-base font-bold text-slate-800">84 lpm</span>
+              </div>
+              <div class="bg-slate-50 border border-slate-200 rounded p-2">
+                <span class="text-[10px] text-slate-400 block">SpO2</span>
+                <span id="saHistSpo2" class="text-base font-bold text-slate-800">95%</span>
+              </div>
+              <div class="bg-slate-50 border border-slate-200 rounded p-2">
+                <span class="text-[10px] text-slate-400 block">PA</span>
+                <span id="saHistBp" class="text-base font-bold text-slate-800">135/85</span>
+              </div>
+              <div class="bg-slate-50 border border-slate-200 rounded p-2">
+                <span class="text-[10px] text-slate-400 block">TEMP</span>
+                <span id="saHistTemp" class="text-base font-bold text-slate-800">37.8°</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="border border-slate-200 rounded p-3.5 space-y-2 bg-white">
+            <span class="text-[11px] font-mono-tech text-slate-400 font-bold uppercase block tracking-wider">ANTECEDENTES Y COMORBILIDADES REGISTRADAS</span>
+            <div id="saHistComorbs" class="flex flex-wrap gap-1.5 font-mono-tech text-[11px]">
+              <span class="bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200">Hipertensión Arterial Grado II</span>
+              <span class="bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200">Diabetes Mellitus Tipo 2</span>
+              <span class="bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200">Exfumador (IPA: 25 paquetes/año)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pestaña 2: Estudios e Imágenes -->
+        <div id="saTabContent-studies" class="hidden space-y-3">
+          <div class="border border-slate-200 rounded p-3.5 bg-white space-y-2">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+              <span class="font-bold text-slate-900 font-mono-tech text-xs">RADIOGRAFÍA DE TÓRAX FRENTE Y PERFIL</span>
+              <span class="text-[10px] font-mono-tech bg-slate-100 px-2 py-0.5 rounded text-slate-600">INFORME VALIDAD</span>
+            </div>
+            <p class="text-xs text-slate-700 leading-relaxed">
+              <b>Hallazgos:</b> Infiltrado alveolar focal en lóbulo inferior derecho compatible con foco neumónico en resolución. Senos costofrénicos libres de derrame. Índice cardiotorácico dentro de límites normales.
+            </p>
+            <div class="text-[10px] text-slate-400 font-mono-tech">Servicio de Diagnóstico por Imágenes · Dr. R. Gutiérrez (MN 45.281)</div>
+          </div>
+
+          <div class="border border-slate-200 rounded p-3.5 bg-white space-y-2">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+              <span class="font-bold text-slate-900 font-mono-tech text-xs">TOMOGRAFÍA COMPUTADA DE TÓRAX MULTICORTE</span>
+              <span class="text-[10px] font-mono-tech bg-slate-100 px-2 py-0.5 rounded text-slate-600">INFORME VALIDAD</span>
+            </div>
+            <p class="text-xs text-slate-700 leading-relaxed">
+              <b>Hallazgos:</b> Consolidación parenquimatosa con broncograma aéreo en segmento basal posterior derecho. Ausencia de adenopatías mediastínicas significativas ni defectos de repleción vascular pulmonar central.
+            </p>
+            <div class="text-[10px] text-slate-400 font-mono-tech">Equipo Siemens SOMATOM 64 · Dra. P. Navarro (MN 51.094)</div>
+          </div>
+
+          <div class="border border-slate-200 rounded p-3.5 bg-white space-y-2">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+              <span class="font-bold text-slate-900 font-mono-tech text-xs">ELECTROCARDIOGRAMA DE 12 DERIVACIONES</span>
+              <span class="text-[10px] font-mono-tech bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded font-bold">NORMAL</span>
+            </div>
+            <p class="text-xs text-slate-700 leading-relaxed">
+              <b>Trazado:</b> Ritmo sinusal regular a 78 lpm. Eje QRS +45°. Intervalo PR 0.16s, QTc 410ms. Ausencia de desnivel ST o signos de sobrecarga ventricular derecha.
+            </p>
+            <div class="text-[10px] text-slate-400 font-mono-tech">Unidad de Telemetría Hospitalaria · Turno Guardia Central</div>
+          </div>
+        </div>
+
+        <!-- Pestaña 3: Laboratorios -->
+        <div id="saTabContent-labs" class="hidden space-y-3">
+          <div class="border border-slate-200 rounded p-3 bg-white">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-1.5 mb-2">
+              <span class="font-bold text-slate-900 font-mono-tech text-xs">HEMOGRAMA Y MARCADORES INFLAMATORIOS (ÚLTIMO CONTROL)</span>
+              <span class="text-[10px] font-mono-tech text-slate-500">LAB CENTRAL · 07:30 AM</span>
+            </div>
+            <table class="w-full text-left font-mono-tech text-xs">
+              <thead>
+                <tr class="text-[10px] text-slate-400 border-b border-slate-100">
+                  <th class="py-1">PARÁMETRO</th>
+                  <th>VALOR</th>
+                  <th>REF.</th>
+                  <th>ESTADO</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                <tr>
+                  <td class="py-1 font-semibold">Leucocitos</td>
+                  <td class="text-amber-700 font-bold">14.800 /mm³</td>
+                  <td class="text-slate-400">4.500 - 10.000</td>
+                  <td><span class="px-1.5 py-0.5 bg-amber-50 text-amber-800 rounded text-[9px] font-bold">ELEVADO</span></td>
+                </tr>
+                <tr>
+                  <td class="py-1 font-semibold">Proteína C Reactiva (PCR)</td>
+                  <td class="text-amber-700 font-bold">48.2 mg/L</td>
+                  <td class="text-slate-400">&lt; 5.0</td>
+                  <td><span class="px-1.5 py-0.5 bg-amber-50 text-amber-800 rounded text-[9px] font-bold">ELEVADO</span></td>
+                </tr>
+                <tr>
+                  <td class="py-1 font-semibold">Dímero D</td>
+                  <td class="text-slate-800 font-bold">420 ng/mL</td>
+                  <td class="text-slate-400">&lt; 500</td>
+                  <td><span class="px-1.5 py-0.5 bg-emerald-50 text-emerald-800 rounded text-[9px] font-bold">NORMAL</span></td>
+                </tr>
+                <tr>
+                  <td class="py-1 font-semibold">Troponina I de Alta Sensibilidad</td>
+                  <td class="text-slate-800 font-bold">0.012 ng/mL</td>
+                  <td class="text-slate-400">&lt; 0.014</td>
+                  <td><span class="px-1.5 py-0.5 bg-emerald-50 text-emerald-800 rounded text-[9px] font-bold">NORMAL</span></td>
+                </tr>
+                <tr>
+                  <td class="py-1 font-semibold">Lactato Sérico</td>
+                  <td class="text-slate-800 font-bold">1.2 mmol/L</td>
+                  <td class="text-slate-400">0.5 - 2.0</td>
+                  <td><span class="px-1.5 py-0.5 bg-emerald-50 text-emerald-800 rounded text-[9px] font-bold">NORMAL</span></td>
+                </tr>
+                <tr>
+                  <td class="py-1 font-semibold">Creatinina</td>
+                  <td class="text-slate-800 font-bold">1.02 mg/dL</td>
+                  <td class="text-slate-400">0.7 - 1.3</td>
+                  <td><span class="px-1.5 py-0.5 bg-emerald-50 text-emerald-800 rounded text-[9px] font-bold">NORMAL</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Pestaña 4: Bitácora Médica -->
+        <div id="saTabContent-notes" class="hidden space-y-3">
+          <div class="border border-slate-200 rounded p-3.5 bg-slate-50 space-y-2">
+            <div class="flex justify-between items-center text-[10px] font-mono-tech text-slate-500">
+              <span class="font-bold text-slate-800">Dra. Elena Morales (Médica Tratante)</span>
+              <span>Hace 5 horas · Turno Mañana</span>
+            </div>
+            <p class="text-xs text-slate-700 leading-relaxed">
+              Paciente vigil, hemodinámicamente estable. Buena mecánica ventilatoria con cánula nasal a 2 L/min. Tolerancia oral adecuada. Se mantiene antibioticoterapia dirigida y control de curva febril.
+            </p>
+          </div>
+
+          <div class="border border-slate-200 rounded p-3.5 bg-slate-50 space-y-2">
+            <div class="flex justify-between items-center text-[10px] font-mono-tech text-slate-500">
+              <span class="font-bold text-slate-800">Enf. Carolina Gómez (Jefa de Piso)</span>
+              <span>Ayer · 22:00 hs</span>
+            </div>
+            <p class="text-xs text-slate-700 leading-relaxed">
+              Control de constantes sin variaciones significativas. Diuresis conservada. Vía periférica permeable en miembro superior izquierdo sin signos de flebitis.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="px-5 py-3 bg-slate-50 border-t border-slate-200 flex justify-between items-center font-mono-tech text-xs">
+        <span class="text-slate-500 text-[11px]">Sistema de Historias Clínicas VitaSentinel · Cumplimiento de Confidencialidad</span>
+        <button onclick="closeStandalonePatientHistory()" class="px-4 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded font-medium transition">
+          Cerrar Historial
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast de Notificación Discreta -->
+  <div id="toast" class="fixed bottom-6 right-6 bg-slate-900 text-white text-xs font-mono-tech px-4 py-2.5 rounded shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 z-50 pointer-events-none flex items-center gap-2">
+    <i data-lucide="info" class="w-4 h-4 text-slate-300"></i>
+    <span id="toast-text">Acción realizada</span>
+  </div>
+
+  <!-- ==================== LÓGICA JAVASCRIPT ==================== -->
+  <script>
+    // Inicializar iconos
+    lucide.createIcons();
+
+    // Estado del modelo de habitaciones
+    const roomsData = [
+      { id: '101', occupied: true, inAlarm: false, alarmMotive: '', name: 'Elena Rostova', age: 42, diag: 'Post-operatorio Apendicitis', time: '36 hrs', bpm: 72, spo2: '99%', bp: '120/80', temp: '36.6°', doctor: 'Dra. Elena Morales', meds: ['Solución Salina 0.9%', 'Ketorolac 30mg'] },
+      { id: '102', occupied: true, inAlarm: false, alarmMotive: '', name: 'Carlos Morales', age: 58, diag: 'Neumonía Bacteriana NAC', time: '4 días', bpm: 84, spo2: '95%', bp: '135/85', temp: '37.8°', doctor: 'Dr. Javier Roca', meds: ['Amoxicilina/Clavulánico', 'Nebulizaciones'] },
+      { id: '103', occupied: false, inAlarm: false },
+      { id: '104', occupied: true, inAlarm: false, alarmMotive: '', name: 'Lucía Domínguez', age: 29, diag: 'Traumatismo de rodilla', time: '12 hrs', bpm: 68, spo2: '99%', bp: '115/75', temp: '36.5°', doctor: 'Dr. Lucas Beltrán', meds: ['Ibuprofeno 600mg'] },
+      { id: '105', occupied: false, inAlarm: false },
+      { id: '106', occupied: true, inAlarm: false, alarmMotive: '', name: 'Manuel Benítez', age: 67, diag: 'Insuficiencia Cardíaca Leve', time: '3 días', bpm: 64, spo2: '97%', bp: '130/80', temp: '36.4°', doctor: 'Dra. Mariana Silva', meds: ['Enalapril 10mg', 'Furosemida 20mg'] },
+      { id: '107', occupied: true, inAlarm: false, alarmMotive: '', name: 'Sofía Álvarez', age: 34, diag: 'Observación Gastroenteritis', time: '18 hrs', bpm: 78, spo2: '98%', bp: '110/70', temp: '37.1°', doctor: 'Dra. Elena Morales', meds: ['Metoclopramida', 'Hidratación IV'] },
+      { id: '108', occupied: false, inAlarm: false },
+      { id: '109', occupied: true, inAlarm: false, alarmMotive: '', name: 'Gabriel Torres', age: 51, diag: 'Post-cirugía Laparoscópica', time: '24 hrs', bpm: 75, spo2: '98%', bp: '125/82', temp: '36.8°', doctor: 'Dr. Javier Roca', meds: ['Paracetamol IV 1g'] },
+      { id: '110', occupied: false, inAlarm: false },
+      { id: '111', occupied: true, inAlarm: false, alarmMotive: '', name: 'Patricia Ortiz', age: 46, diag: 'Infección Urinaria Aguda', time: '48 hrs', bpm: 82, spo2: '98%', bp: '118/76', temp: '38.2°', doctor: 'Dra. Beatriz Santos', meds: ['Ceftriaxona 1g'] },
+      { id: '112', occupied: true, inAlarm: false, alarmMotive: '', name: 'Jorge Navarro', age: 61, diag: 'Monitoreo Diabetes Tipo 2', time: '5 días', bpm: 70, spo2: '97%', bp: '128/82', temp: '36.7°', doctor: 'Dr. Lucas Beltrán', meds: ['Insulina NPH', 'Metformina'] },
+      { id: '113', occupied: false, inAlarm: false },
+      { id: '114', occupied: true, inAlarm: false, alarmMotive: '', name: 'Valeria Cárdenas', age: 23, diag: 'Crisis asmática controlada', time: '16 hrs', bpm: 88, spo2: '97%', bp: '115/78', temp: '36.6°', doctor: 'Dra. Mariana Silva', meds: ['Salbutamol aerosol', 'Corticoides'] },
+      { id: '115', occupied: true, inAlarm: false, alarmMotive: '', name: 'Andrés Gil', age: 72, diag: 'Síndrome Febril en estudio', time: '2 días', bpm: 79, spo2: '96%', bp: '132/84', temp: '38.6°', doctor: 'Dr. Javier Roca', meds: ['Antipiréticos', 'Hemocultivos'] },
+      { id: '116', occupied: false, inAlarm: false }
+    ];
+
+    let currentSelectedRoomId = null;
+    let activeFilter = 'all';
+    let globalAlarmMode = false;
+
+    // RENDERIZADO DE LAS HABITACIONES EN EL PLANO CAD
+    function renderFloorPlan() {
+      roomsData.forEach(room => {
+        const el = document.getElementById(`room-${room.id}`);
+        if (!el) return;
+
+        // Estado visual según filtros
+        let opacityClass = 'opacity-100';
+        if (activeFilter === 'occupied' && !room.occupied) opacityClass = 'opacity-25 pointer-events-none';
+        if (activeFilter === 'free' && room.occupied) opacityClass = 'opacity-25 pointer-events-none';
+        if (activeFilter === 'alarm' && !room.inAlarm) opacityClass = 'opacity-25 pointer-events-none';
+
+        // Estilos según ocupación y alarma
+        let bedFill = room.occupied ? 'bg-slate-300 border-slate-500' : 'bg-slate-100 border-slate-300';
+        if (room.inAlarm) bedFill = 'bg-red-200 border-red-500';
+
+        let statusText = room.occupied ? (room.inAlarm ? 'ALARMA' : 'OCUP') : 'LIBRE';
+        let statusBadgeClass = room.inAlarm 
+          ? 'bg-red-500 animate-ping' 
+          : (room.occupied ? 'bg-slate-700' : 'bg-slate-300');
+
+        let statusBadgeTextClass = room.inAlarm 
+          ? 'text-red-700 font-bold' 
+          : 'text-slate-500';
+
+        const isSelected = currentSelectedRoomId === room.id;
+        const alarmClass = room.inAlarm ? 'in-alarm' : '';
+
+        el.className = `room-box relative bg-white border border-slate-400 rounded-sm p-1.5 flex flex-col justify-between ${opacityClass} ${isSelected ? 'active-selected' : ''} ${alarmClass}`;
+
+        el.innerHTML = `
+          <!-- Header de habitación -->
+          <div class="flex items-center justify-between text-[10px] font-mono-tech border-b border-slate-200 pb-1">
+            <span class="font-bold text-slate-800">HAB-${room.id}</span>
+            <div class="flex items-center gap-1.5">
+              <span class="relative flex h-2 w-2">
+                <span class="${statusBadgeClass} absolute inline-flex h-full w-full rounded-full opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 ${room.inAlarm ? 'bg-red-600' : (room.occupied ? 'bg-slate-700' : 'bg-slate-300')}"></span>
+              </span>
+              <span class="text-[8px] ${statusBadgeTextClass} uppercase">${statusText}</span>
+            </div>
+          </div>
+
+          <!-- Esquema arquitectónico interior -->
+          <div class="flex items-center justify-between my-auto py-1 px-1">
+            <!-- Cama Minimalista -->
+            <div class="w-10 h-16 border-2 ${bedFill} rounded-sm relative flex flex-col items-center justify-start p-1 shadow-xs transition">
+              <div class="w-6 h-3 bg-white border border-slate-400 rounded-xs mb-1"></div>
+              <div class="text-[7px] font-mono-tech ${room.inAlarm ? 'text-red-700 font-bold' : 'text-slate-500'}">
+                ${room.inAlarm ? '!' : 'CAMA'}
+              </div>
+            </div>
+
+            <!-- Área de baño privado esquemático -->
+            <div class="w-8 h-10 border border-slate-300 bg-slate-50 rounded-xs flex flex-col items-center justify-center p-0.5">
+              <div class="w-3.5 h-3.5 rounded-full border border-slate-400 mb-0.5"></div>
+              <span class="text-[6px] font-mono-tech text-slate-400">WC</span>
+            </div>
+          </div>
+
+          <!-- Puerta esquemática y nombre -->
+          <div class="flex justify-between items-center text-[8px] font-mono-tech text-slate-400 border-t border-slate-100 pt-0.5">
+            <span class="text-[7px] truncate max-w-[85px] ${room.inAlarm ? 'text-red-700 font-bold' : ''}">
+              ${room.occupied ? room.name : 'DISPONIBLE'}
+            </span>
+            <span class="text-slate-300">◺</span>
+          </div>
+        `;
+      });
+
+      updateStats();
+    }
+
+    // Actualizar métricas del HUD
+    function updateStats() {
+      const occupiedCount = roomsData.filter(r => r.occupied).length;
+      const totalCount = roomsData.length;
+      const freeCount = totalCount - occupiedCount;
+      const alarmCount = roomsData.filter(r => r.inAlarm).length;
+
+      document.getElementById('stat-occupied').innerText = occupiedCount;
+      document.getElementById('stat-total').innerText = totalCount;
+      document.getElementById('count-occupied').innerText = occupiedCount;
+      document.getElementById('count-free').innerText = freeCount;
+      document.getElementById('count-alarm').innerText = alarmCount;
+
+      const alarmsBadge = document.getElementById('stat-alarms-badge');
+      const alarmsDot = document.getElementById('stat-alarms-dot');
+      const alarmsCountText = document.getElementById('stat-alarms-count');
+
+      if (alarmCount > 0) {
+        alarmsBadge.className = "flex items-center gap-1.5 bg-red-100 border border-red-300 px-2.5 py-1 rounded text-red-900";
+        alarmsDot.className = "w-2 h-2 rounded-full bg-red-600 animate-ping";
+        alarmsCountText.innerText = `${alarmCount} CRÍTICAS`;
+        document.getElementById('alarm-banner').classList.remove('hidden');
+      } else {
+        alarmsBadge.className = "flex items-center gap-1.5 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded text-slate-700";
+        alarmsDot.className = "w-2 h-2 rounded-full bg-emerald-500";
+        alarmsCountText.innerText = "0 CRÍTICAS";
+        document.getElementById('alarm-banner').classList.add('hidden');
+      }
+    }
+
+    // Filtros
+    function setFilter(filter) {
+      activeFilter = filter;
+      ['all', 'occupied', 'free', 'alarm'].forEach(f => {
+        const btn = document.getElementById(`filter-${f}`);
+        if (!btn) return;
+        if (f === filter) {
+          btn.className = "px-2.5 py-1 rounded bg-slate-900 text-white font-medium transition";
+        } else {
+          btn.className = f === 'alarm' 
+            ? "px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-red-700 transition font-semibold"
+            : "px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 transition";
+        }
+      });
+      renderFloorPlan();
+    }
+
+    // ==================== TOOLTIP FLOTANTE (RESUMEN RÁPIDO ON HOVER) ====================
+    const tooltip = document.getElementById('hover-tooltip');
+    const ttTitle = document.getElementById('tt-title');
+    const ttStatus = document.getElementById('tt-status');
+    const ttContent = document.getElementById('tt-content');
+
+    function showTooltip(e, roomId) {
+      const room = roomsData.find(r => r.id === roomId);
+      if (!room) return;
+
+      ttTitle.innerText = `HABITACIÓN ${room.id}`;
+
+      if (room.inAlarm) {
+        ttStatus.innerText = "⚠ EN ALERTA CRÍTICA";
+        ttStatus.className = "px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-600 text-white";
+        ttContent.innerHTML = `
+          <div class="text-red-300 font-bold">ALERTA VITAL: ${room.alarmMotive}</div>
+          <div class="text-white font-semibold">${room.name} (${room.age} años)</div>
+          <div>FC: <b class="text-red-400">${room.bpm} lpm</b> · SpO2: <b class="text-red-400">${room.spo2}</b></div>
+          <div class="text-slate-400 text-[10px] mt-1">Clic para abrir panel y estabilizar</div>
+        `;
+      } else if (room.occupied) {
+        ttStatus.innerText = "OCUPADA";
+        ttStatus.className = "px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-700 text-slate-200";
+        ttContent.innerHTML = `
+          <div class="text-white font-semibold">${room.name} (${room.age} años)</div>
+          <div class="text-slate-400 truncate">${room.diag}</div>
+          <div class="text-slate-300 pt-0.5">FC: <b>${room.bpm} bpm</b> · SpO2: <b>${room.spo2}</b> · PA: <b>${room.bp}</b></div>
+          <div class="text-slate-400 text-[10px]">Médico: ${room.doctor || 'Guardia'}</div>
+        `;
+      } else {
+        ttStatus.innerText = "DISPONIBLE";
+        ttStatus.className = "px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-800 text-emerald-200";
+        ttContent.innerHTML = `
+          <div class="text-emerald-300">Habitación desinfectada y lista</div>
+          <div class="text-slate-400">Dotación y O2 verificados</div>
+          <div class="text-slate-400 text-[10px] mt-1">Clic para asignar paciente</div>
+        `;
+      }
+
+      positionTooltip(e);
+      tooltip.style.opacity = '1';
+    }
+
+    function showStationTooltip(e) {
+      ttTitle.innerText = "ESTACIÓN CENTRAL DE ENFERMERÍA";
+      ttStatus.innerText = "HUB OPERATIVO";
+      ttStatus.className = "px-1.5 py-0.5 rounded text-[10px] font-bold bg-teal-800 text-teal-100";
+      ttContent.innerHTML = `
+        <div class="text-white font-semibold">Puesto de Guardia y Despacho</div>
+        <div class="text-slate-300">4 Enfermeros / 2 Médicos en turno</div>
+        <div class="text-slate-400">Suministros: 94% · Acceso 360°</div>
+        <div class="text-slate-400 text-[10px] mt-1">Clic para ver personal y notas</div>
+      `;
+      positionTooltip(e);
+      tooltip.style.opacity = '1';
+    }
+
+    function positionTooltip(e) {
+      if (!tooltip) return;
+      const offset = 16;
+      const rect = tooltip.getBoundingClientRect();
+      const w = rect.width > 0 ? rect.width : 280;
+      const h = rect.height > 0 ? rect.height : 160;
+
+      let left = e.clientX + offset;
+      let top = e.clientY + offset;
+
+      // Si se desborda hacia la derecha de la ventana, voltear hacia la izquierda del cursor
+      if (left + w > window.innerWidth - 12) {
+        left = e.clientX - w - offset;
+      }
+      // Si se desborda hacia la parte inferior de la ventana, voltear hacia arriba del cursor
+      if (top + h > window.innerHeight - 12) {
+        top = e.clientY - h - offset;
+      }
+
+      // Clamping seguro dentro de los límites visibles de la pantalla (evita coordenadas negativas)
+      left = Math.max(12, Math.min(window.innerWidth - w - 12, left));
+      top = Math.max(12, Math.min(window.innerHeight - h - 12, top));
+
+      tooltip.style.left = `${left}px`;
+      tooltip.style.top = `${top}px`;
+    }
+
+    function hideTooltip() {
+      tooltip.style.opacity = '0';
+    }
+
+    window.addEventListener('mousemove', (e) => {
+      if (tooltip.style.opacity === '1') {
+        positionTooltip(e);
+      }
+    });
+
+    // ==================== DRAWER LATERAL / HUD DETALLE DE HABITACIÓN ====================
+    function openRoomModal(roomId) {
+      currentSelectedRoomId = roomId;
+      const room = roomsData.find(r => r.id === roomId);
+      if (!room) return;
+
+      renderFloorPlan();
+
+      const hud = document.getElementById('side-hud');
+      const title = document.getElementById('hud-room-title');
+      const status = document.getElementById('hud-room-status');
+      const patientSection = document.getElementById('hud-patient-section');
+      const emptySection = document.getElementById('hud-empty-section');
+      const actions = document.getElementById('hud-actions');
+      const alarmCard = document.getElementById('hud-alarm-alert-card');
+      const dot = document.getElementById('hud-indicator-dot');
+
+      title.innerText = `HABITACIÓN // SALA ${room.id}`;
+
+      if (room.inAlarm) {
+        status.innerText = "⚠ EN ALERTA VITAL";
+        status.className = "text-xs font-mono-tech font-bold px-2 py-0.5 rounded bg-red-600 text-white animate-pulse";
+        dot.className = "w-2.5 h-2.5 rounded-full bg-red-600 animate-ping";
+
+        alarmCard.classList.remove('hidden');
+        document.getElementById('hud-alarm-motive').innerText = room.alarmMotive || "Variación abrupta de signos vitales. Prioridad alta.";
+      } else {
+        alarmCard.classList.add('hidden');
+        dot.className = room.occupied ? "w-2.5 h-2.5 rounded-full bg-slate-800" : "w-2.5 h-2.5 rounded-full bg-slate-300";
+      }
+
+      if (room.occupied) {
+        if (!room.inAlarm) {
+          status.innerText = "OCUPADA - MONITORIZADA";
+          status.className = "text-xs font-mono-tech font-bold px-2 py-0.5 rounded bg-slate-800 text-white";
+        }
+        
+        patientSection.classList.remove('hidden');
+        emptySection.classList.add('hidden');
+        actions.classList.remove('hidden');
+
+        document.getElementById('hud-patient-name').innerText = room.name;
+        document.getElementById('hud-patient-meta').innerText = `${room.age} años • EXPEDIENTE: #MED-${room.id}84`;
+        document.getElementById('hud-patient-diag').innerText = room.diag;
+        document.getElementById('hud-patient-time').innerText = room.time;
+        document.getElementById('hud-patient-doctor').innerText = room.doctor || 'Dra. Elena Morales';
+        document.getElementById('hud-bpm').innerText = room.bpm;
+        document.getElementById('hud-spo2').innerText = room.spo2;
+        document.getElementById('hud-bp').innerText = room.bp;
+        document.getElementById('hud-temp').innerText = room.temp || '36.7°';
+
+        // Estilos del indicador de telemetría según alarma
+        const signal = document.getElementById('hud-signal-indicator');
+        if (room.inAlarm) {
+          signal.innerHTML = `<span class="w-2 h-2 rounded-full bg-red-600 animate-ping"></span> <b class="text-red-700">DESATURACIÓN / INESTABILIDAD</b>`;
+        } else {
+          signal.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500 pulse-dot"></span> SEÑAL ESTABLE`;
+        }
+
+        // Render medicación
+        const medsContainer = document.getElementById('hud-meds');
+        medsContainer.innerHTML = (room.meds || ['Solución Salina 0.9%']).map(m => `
+          <div class="flex justify-between py-1 border-b border-slate-100">
+            <span>• ${m}</span>
+            <span class="text-slate-400">Prescrito</span>
+          </div>
+        `).join('');
+
+        // Botón de inducir o resolver crisis
+        const btnSingleAlarm = document.getElementById('btn-trigger-single-alarm');
+        if (room.inAlarm) {
+          btnSingleAlarm.innerHTML = `<i data-lucide="shield-check" class="w-3.5 h-3.5"></i> ESTABILIZAR`;
+          btnSingleAlarm.className = "py-2 px-3 border border-emerald-400 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-mono-tech rounded transition flex items-center justify-center gap-1.5 font-bold";
+        } else {
+          btnSingleAlarm.innerHTML = `<i data-lucide="alert-octagon" class="w-3.5 h-3.5"></i> INDUCIR CRISIS`;
+          btnSingleAlarm.className = "py-2 px-3 border border-red-300 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-mono-tech rounded transition flex items-center justify-center gap-1.5";
+        }
+
+      } else {
+        status.innerText = "LIBRE - HIGIENIZADA";
+        status.className = "text-xs font-mono-tech font-bold px-2 py-0.5 rounded bg-slate-200 text-slate-700";
+
+        patientSection.classList.add('hidden');
+        emptySection.classList.remove('hidden');
+        actions.classList.add('hidden');
+      }
+
+      hud.classList.remove('translate-x-full');
+      lucide.createIcons();
+    }
+
+    function closeSideHud() {
+      document.getElementById('side-hud').classList.add('translate-x-full');
+      currentSelectedRoomId = null;
+      renderFloorPlan();
+    }
+
+    // ==================== GESTIÓN DE MODO ALARMA Y CRISIS CLÍNICA ====================
+    function toggleGlobalAlarmMode() {
+      globalAlarmMode = !globalAlarmMode;
+      const btn = document.getElementById('btn-toggle-alarm-mode');
+      const btnText = document.getElementById('btn-alarm-text');
+
+      if (globalAlarmMode) {
+        btn.className = "px-2.5 py-1 rounded border border-red-500 bg-red-600 text-white font-mono-tech flex items-center gap-1.5 transition font-bold shadow-sm";
+        btnText.innerText = "DESACTIVAR MODO ALARMA";
+
+        // Inducir crisis en habitación 101 y 107
+        const r101 = roomsData.find(r => r.id === '101');
+        if (r101 && r101.occupied) {
+          r101.inAlarm = true;
+          r101.spo2 = '86%';
+          r101.bpm = 126;
+          r101.bp = '90/55';
+          r101.alarmMotive = "Caída brusca de saturación (SpO2 86%) con taquicardia refleja (126 lpm).";
+        }
+
+        const r107 = roomsData.find(r => r.id === '107');
+        if (r107 && r107.occupied) {
+          r107.inAlarm = true;
+          r107.bpm = 132;
+          r107.bp = '155/95';
+          r107.alarmMotive = "Pico hipertensivo agudo y alteración del patrón respiratorio.";
+        }
+
+        document.getElementById('alarm-banner-text').innerText = "HAB-101 (SpO2 86% · Taquicardia) y HAB-107 (Pico Hipertensivo). Atención de guardia requerida.";
+        notifyAction("⚠ MODO ALARMA ACTIVADO: Crisis simulada en HAB-101 y HAB-107");
+      } else {
+        btn.className = "px-2.5 py-1 rounded border border-slate-300 hover:border-red-400 bg-white text-slate-700 hover:text-red-700 font-mono-tech flex items-center gap-1.5 transition";
+        btnText.innerText = "SIMULAR MODO ALARMA";
+        resolveAllAlarms();
+        notifyAction("Modo Alarma desactivado. Signos vitales normalizados.");
+      }
+
+      renderFloorPlan();
+      if (currentSelectedRoomId) openRoomModal(currentSelectedRoomId);
+      lucide.createIcons();
+    }
+
+    function triggerCurrentRoomAlarm() {
+      if (!currentSelectedRoomId) return;
+      const room = roomsData.find(r => r.id === currentSelectedRoomId);
+      if (!room || !room.occupied) return;
+
+      if (room.inAlarm) {
+        // Si ya estaba en alarma, resolverla
+        resolveCurrentRoomAlarm();
+      } else {
+        room.inAlarm = true;
+        room.spo2 = '87%';
+        room.bpm = 122;
+        room.alarmMotive = `Deterioro agudo de parámetros fisiológicos en HAB-${room.id}. Se requiere soporte ventilatorio inmediato.`;
+        notifyAction(`⚠ Crisis clínica inducida en HAB-${room.id}`);
+        openRoomModal(currentSelectedRoomId);
+      }
+    }
+
+    function resolveCurrentRoomAlarm() {
+      if (!currentSelectedRoomId) return;
+      const room = roomsData.find(r => r.id === currentSelectedRoomId);
+      if (!room) return;
+
+      room.inAlarm = false;
+      room.spo2 = '98%';
+      room.bpm = 74;
+      room.bp = '120/80';
+      room.alarmMotive = '';
+
+      notifyAction(`✓ Paciente de HAB-${room.id} estabilizado según protocolo.`);
+      openRoomModal(currentSelectedRoomId);
+    }
+
+    function resolveAllAlarms() {
+      roomsData.forEach(r => {
+        if (r.inAlarm) {
+          r.inAlarm = false;
+          r.spo2 = '98%';
+          r.bpm = 74;
+          r.alarmMotive = '';
+        }
+      });
+      globalAlarmMode = false;
+      const btn = document.getElementById('btn-toggle-alarm-mode');
+      btn.className = "px-2.5 py-1 rounded border border-slate-300 hover:border-red-400 bg-white text-slate-700 hover:text-red-700 font-mono-tech flex items-center gap-1.5 transition";
+      document.getElementById('btn-alarm-text').innerText = "SIMULAR MODO ALARMA";
+      
+      notifyAction("Todos los pacientes estabilizados con éxito.");
+      renderFloorPlan();
+      if (currentSelectedRoomId) openRoomModal(currentSelectedRoomId);
+      lucide.createIcons();
+    }
+
+    // Alta de paciente
+    function dischargePatient() {
+      if (!currentSelectedRoomId) return;
+      const room = roomsData.find(r => r.id === currentSelectedRoomId);
+      if (room) {
+        room.occupied = false;
+        room.inAlarm = false;
+        notifyAction(`Paciente ${room.name} dado de alta de la Hab. ${room.id}`);
+        openRoomModal(currentSelectedRoomId);
+      }
+    }
+
+    // Asignar paciente al azar
+    function admitRandomPatient() {
+      if (!currentSelectedRoomId) return;
+      const room = roomsData.find(r => r.id === currentSelectedRoomId);
+      if (room) {
+        const names = ['Andrés Morales', 'Martina Valdez', 'Luciano Castro', 'Mariana Ruiz', 'Federico Sanz', 'Camila Benítez'];
+        const diags = ['Monitoreo Coronario', 'Apendicectomía', 'Observación Clínica', 'Cuadro Febril Agudo', 'Traumatismo Leve'];
+        room.occupied = true;
+        room.inAlarm = false;
+        room.name = names[Math.floor(Math.random() * names.length)];
+        room.age = Math.floor(Math.random() * 50) + 20;
+        room.diag = diags[Math.floor(Math.random() * diags.length)];
+        room.time = 'Recién ingresado';
+        room.bpm = 76;
+        room.spo2 = '98%';
+        room.bp = '120/80';
+        room.temp = '36.6°';
+        room.doctor = 'Dra. Elena Morales';
+        room.meds = ['Analgesia preventiva', 'Suero hidratante'];
+
+        notifyAction(`Paciente ${room.name} ingresado a Hab. ${room.id}`);
+        openRoomModal(currentSelectedRoomId);
+      }
+    }
+
+    // Modal de Estación de Enfermería
+    function openStationModal() {
+      document.getElementById('station-modal').classList.remove('hidden');
+    }
+    function closeStationModal() {
+      document.getElementById('station-modal').classList.add('hidden');
+    }
+
+    // Notificaciones discretas tipo Toast
+    function notifyAction(message) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toast-text').innerText = message;
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      setTimeout(() => {
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 2800);
+    }
+
+    // Reloj dinámico de UI
+    setInterval(() => {
+      const now = new Date();
+      const h = String(now.getHours()).padStart(2, '0');
+      const m = String(now.getMinutes()).padStart(2, '0');
+      const s = String(now.getSeconds()).padStart(2, '0');
+      document.getElementById('game-clock').innerText = `${h}:${m}:${s}`;
+    }, 1000);
+
+    // ==================== GESTIÓN DEL MODAL DE HISTORIAL CLÍNICO Y ESTUDIOS ====================
+    function openStandalonePatientHistory(roomId) {
+      if (!roomId) roomId = currentSelectedRoomId || '101';
+      const room = roomsData.find(r => r.id === roomId);
+      if (!room || !room.occupied) {
+        notifyAction('La habitación seleccionada no tiene paciente asignado.');
+        return;
+      }
+
+      const modal = document.getElementById('standalonePatientHistoryModal');
+      document.getElementById('saHistPatientName').innerText = `HISTORIA CLÍNICA // PACIENTE: ${room.name.toUpperCase()}`;
+      document.getElementById('saHistRoomBadge').innerText = `SALA ${room.id} · EXP: #MED-${room.id}84 · ${room.age} años · ${room.doctor || 'Dra. Elena Morales'}`;
+      document.getElementById('saHistDiagTitle').innerText = room.diag || 'Monitoreo Clínico';
+      document.getElementById('saHistHr').innerText = `${room.bpm} lpm`;
+      document.getElementById('saHistSpo2').innerText = room.spo2;
+      document.getElementById('saHistBp').innerText = room.bp;
+      document.getElementById('saHistTemp').innerText = room.temp || '36.8°';
+
+      switchStandaloneTab('summary');
+      modal.classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeStandalonePatientHistory() {
+      const modal = document.getElementById('standalonePatientHistoryModal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function switchStandaloneTab(tabKey) {
+      const tabs = ['summary', 'studies', 'labs', 'notes'];
+      tabs.forEach(t => {
+        const btn = document.getElementById(`saTabBtn-${t}`);
+        const pane = document.getElementById(`saTabContent-${t}`);
+        if (btn) {
+          if (t === tabKey) {
+            btn.className = "px-3.5 py-2.5 border-b-2 border-teal-600 text-teal-700 font-bold";
+          } else {
+            btn.className = "px-3.5 py-2.5 border-b-2 border-transparent text-slate-600 hover:text-slate-900";
+          }
+        }
+        if (pane) {
+          if (t === tabKey) {
+            pane.classList.remove('hidden');
+          } else {
+            pane.classList.add('hidden');
+          }
+        }
+      });
+      lucide.createIcons();
+    }
+
+    // ==================== MOTOR DE PAN & ZOOM OPTIMIZADO (CON LÍMITES ESTRICTOS DEL SVG) ====================
+    let scale = 0.95;
+    let panX = 0;
+    let panY = 0;
+    let isDragging = false;
+    let hasMovedSignificantDistance = false;
+    let totalDragDistance = 0;
+    let prevPointerX = 0;
+    let prevPointerY = 0;
+
+    const viewport = document.getElementById('viewport-container');
+    const canvas = document.getElementById('blueprint-canvas');
+    const zoomLabel = document.getElementById('zoom-label');
+
+    // Dimensiones exactas de la placa arquitectónica CAD (1200px x 800px)
+    const CANVAS_WIDTH = 1200;
+    const CANVAS_HEIGHT = 800;
+
+    // Actualizar cursor según si la imagen excede la ventana y se puede mover o no
+    function updateCursor() {
+      const vpW = viewport.clientWidth;
+      const vpH = viewport.clientHeight;
+      const canPan = (CANVAS_WIDTH * scale > vpW) || (CANVAS_HEIGHT * scale > vpH);
+
+      if (isDragging) {
+        viewport.style.cursor = 'grabbing';
+      } else if (canPan) {
+        viewport.style.cursor = 'grab';
+      } else {
+        viewport.style.cursor = 'default';
+      }
+    }
+
+    // Limitar el movimiento para que el plano NUNCA se mueva si no hay zoom, y cuando hay zoom su límite sean los bordes exactos
+    function clampPan() {
+      const vpW = viewport.clientWidth;
+      const vpH = viewport.clientHeight;
+      const scaledW = CANVAS_WIDTH * scale;
+      const scaledH = CANVAS_HEIGHT * scale;
+
+      // Eje X: Si el plano cabe horizontalmente, mantenerlo estrictamente centrado (sin desplazamiento)
+      if (scaledW <= vpW) {
+        panX = (vpW - scaledW) / 2;
+      } else {
+        // Si es más ancho que la pantalla, permitir mover pero con tope estricto en los bordes del plano
+        const minPanX = vpW - scaledW;
+        const maxPanX = 0;
+        panX = Math.max(minPanX, Math.min(maxPanX, panX));
+      }
+
+      // Eje Y: Si el plano cabe verticalmente, mantenerlo estrictamente centrado (sin desplazamiento)
+      if (scaledH <= vpH) {
+        panY = (vpH - scaledH) / 2;
+      } else {
+        // Si es más alto que la pantalla, permitir mover pero con tope estricto en los bordes del plano
+        const minPanY = vpH - scaledH;
+        const maxPanY = 0;
+        panY = Math.max(minPanY, Math.min(maxPanY, panY));
+      }
+
+      updateCursor();
+    }
+
+    function updateTransform() {
+      canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+      if (zoomLabel) {
+        zoomLabel.innerText = `${Math.round(scale * 100)}%`;
+      }
+    }
+
+    function getFitScale() {
+      const vpW = viewport.clientWidth || window.innerWidth;
+      const vpH = viewport.clientHeight || (window.innerHeight - 100);
+      const fit = Math.min((vpW - 20) / CANVAS_WIDTH, (vpH - 20) / CANVAS_HEIGHT);
+      return Math.max(0.35, Math.min(fit, 1.05));
+    }
+
+    function resetZoomPan() {
+      scale = getFitScale();
+      clampPan();
+      canvas.style.transition = 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)';
+      updateTransform();
+      setTimeout(() => {
+        canvas.style.transition = 'none';
+      }, 240);
+    }
+
+    function zoomMap(delta) {
+      const vpW = viewport.clientWidth;
+      const vpH = viewport.clientHeight;
+      const minScale = getFitScale();
+      const newScale = Math.min(Math.max(minScale, scale + delta), 2.5);
+
+      if (newScale === scale) return;
+
+      // Zoom centrado en el centro visual del viewport
+      const centerX = vpW / 2;
+      const centerY = vpH / 2;
+      panX = centerX - (centerX - panX) * (newScale / scale);
+      panY = centerY - (centerY - panY) * (newScale / scale);
+      scale = newScale;
+
+      canvas.style.transition = 'transform 0.18s cubic-bezier(0.16, 1, 0.3, 1)';
+      clampPan();
+      updateTransform();
+      setTimeout(() => {
+        canvas.style.transition = 'none';
+      }, 200);
+    }
+
+    // Zoom fluido centrado en la posición exacta del cursor del ratón (sin permitir zoom out menor al ajuste de pantalla)
+    viewport.addEventListener('wheel', (e) => {
+      e.preventDefault();
+
+      const rect = viewport.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      const zoomFactor = e.deltaY < 0 ? 0.08 : -0.08;
+      const minScale = getFitScale();
+      const newScale = Math.min(Math.max(minScale, scale + zoomFactor), 2.5);
+
+      if (newScale === scale) return;
+
+      // Zoom focalizado en el punto del cursor
+      panX = mouseX - (mouseX - panX) * (newScale / scale);
+      panY = mouseY - (mouseY - panY) * (newScale / scale);
+      scale = newScale;
+
+      canvas.style.transition = 'none'; // Respuesta 1:1 inmediata sin retardo ni inercia desfasada
+      clampPan();
+      updateTransform();
+    }, { passive: false });
+
+    // Inicio de arrastre (Pan) con Pointer Events (unificado para ratón, trackpad y táctil con cero zona muerta)
+    viewport.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return; // Solo botón principal
+      if (e.target.closest('button, .modal, #station-modal, .alarm-action')) return;
+
+      isDragging = true;
+      hasMovedSignificantDistance = false;
+      totalDragDistance = 0;
+      prevPointerX = e.clientX;
+      prevPointerY = e.clientY;
+
+      try {
+        viewport.setPointerCapture(e.pointerId);
+      } catch (err) {}
+
+      canvas.style.transition = 'none'; // CRÍTICO: eliminar transición CSS durante el arrastre
+      updateCursor();
+    });
+
+    viewport.addEventListener('pointermove', (e) => {
+      if (!isDragging) {
+        if (tooltip && tooltip.style.opacity === '1') {
+          positionTooltip(e);
+        }
+        return;
+      }
+
+      // Cálculo diferencial directo (delta) que previene acumulación en paredes o zonas muertas
+      const dx = e.clientX - prevPointerX;
+      const dy = e.clientY - prevPointerY;
+      prevPointerX = e.clientX;
+      prevPointerY = e.clientY;
+
+      totalDragDistance += Math.hypot(dx, dy);
+      if (totalDragDistance > 4) {
+        hasMovedSignificantDistance = true;
+        hideTooltip();
+      }
+
+      panX += dx;
+      panY += dy;
+
+      clampPan();
+      updateTransform();
+    });
+
+    const stopDragging = (e) => {
+      if (!isDragging) return;
+      isDragging = false;
+      try {
+        if (viewport.hasPointerCapture(e.pointerId)) {
+          viewport.releasePointerCapture(e.pointerId);
+        }
+      } catch (err) {}
+      updateCursor();
+      canvas.style.transition = 'none';
+    };
+
+    viewport.addEventListener('pointerup', stopDragging);
+    viewport.addEventListener('pointercancel', stopDragging);
+    viewport.addEventListener('dragstart', (e) => e.preventDefault());
+
+    // Control de clics en habitaciones para evitar que el arrastre abra la ventana por error
+    function handleRoomClick(roomId) {
+      if (hasMovedSignificantDistance) return;
+      openRoomModal(roomId);
+    }
+
+    function handleStationClick() {
+      if (hasMovedSignificantDistance) return;
+      openStationModal();
+    }
+
+    // Reajustar límites en caso de cambio de tamaño de ventana
+    window.addEventListener('resize', () => {
+      clampPan();
+      updateTransform();
+    });
+
+    // Iniciar renderizado al cargar
+    window.onload = function() {
+      renderFloorPlan();
+      resetZoomPan();
+      // Abrir por defecto la habitación 101 para enseñar el HUD
+      setTimeout(() => {
+        openRoomModal('101');
+      }, 300);
+    };
+  </script>
+</body>
+</html>
